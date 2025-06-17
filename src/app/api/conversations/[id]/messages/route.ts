@@ -29,17 +29,7 @@ export async function GET(
 
     const { data: messages, error } = await supabase
       .from('messages')
-      .select(`
-        *,
-        attachments (
-          id,
-          filename,
-          file_type,
-          file_size,
-          file_url,
-          created_at
-        )
-      `)
+      .select('*')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
 

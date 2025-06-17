@@ -48,17 +48,7 @@ export async function POST(request: NextRequest) {
         
         const { data: existingMessages } = await supabase
           .from('messages')
-          .select(`
-            *,
-            attachments (
-              id,
-              filename,
-              file_type,
-              file_size,
-              file_url,
-              created_at
-            )
-          `)
+          .select('*')
           .eq('conversation_id', conversationId)
           .order('created_at', { ascending: true });
 
