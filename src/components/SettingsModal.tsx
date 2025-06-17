@@ -42,7 +42,18 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save API key');
+        console.error('API Error:', errorData);
+        
+        // Show more specific error messages
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please log in again.');
+        } else if (response.status === 400) {
+          throw new Error(errorData.error || 'Invalid API key format');
+        } else if (response.status === 500) {
+          throw new Error(`Server error: ${errorData.details || errorData.error || 'Unknown error'}`);
+        } else {
+          throw new Error(errorData.error || 'Failed to save API key');
+        }
       }
 
       await refreshProfile();

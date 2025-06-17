@@ -47,13 +47,18 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'OpenRouter API key is required' }, { status: 400 });
     }
 
+    // Validate API key first
+    console.log('Validating API key...');
     const openRouter = new OpenRouterService(openrouter_api_key);
     const isValid = await openRouter.validateApiKey();
 
     if (!isValid) {
+      console.log('API key validation failed');
       return NextResponse.json({ error: 'Invalid OpenRouter API key' }, { status: 400 });
     }
 
+    console.log('API key validation successful, updating profile...');
+    
     const { data: profile, error } = await supabase
       .from('profiles')
       .upsert({
@@ -66,9 +71,15 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+      console.error('Database error updating profile:', error);
+      return NextResponse.json({ 
+        error: 'Failed to update profile', 
+        details: error.message,
+        code: error.code 
+      }, { status: 500 });
     }
 
+    console.log('Profile updated successfully');
     return NextResponse.json({ profile });
   } catch (error) {
     console.error('Error updating profile:', error);
