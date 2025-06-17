@@ -1,168 +1,90 @@
-# T3 Chat Clone - [Convex Chat](https://t3-cloneathon.lukeschroeter.de/) - Cloneathon Submission
+# Auberon Chat
 
-![T3 Chat Clone Showcase](./screenshots/showcase.png)
-*Modern AI chat application with multi-model consensus and advanced features*
+*Just another AI chat app, but with some cool tricks*
 
-## 🌟 Application Showcase
+## What's This?
 
-### Main Chat Interface
-![Main Chat Interface](./screenshots/main-chat-01.png)
-![Main Chat Interface](./screenshots/main-chat-02.png)
-*Clean, modern chat interface with model selection and real-time streaming*
+Built this chat app because why not. Has some neat features that make it stand out from the usual boring chat interfaces.
 
-### Multi-Model Consensus Chat
-![Consensus Chat](./screenshots/consensus-chat-01.png)
-![Consensus Chat](./screenshots/consensus-chat-02.png)
-![Consensus Chat](./screenshots/consensus-chat-03.png)
-*Compare responses from multiple AI models side-by-side*
+### Cool Stuff It Does
+- Chat with multiple AI models at once (consensus mode is pretty fun)
+- Upload images and PDFs - works with models that actually support it
+- Pick from 20+ different AI models 
+- Saves your chat history
+- Clean, dark interface that doesn't hurt your eyes
+- Secure auth with Supabase
 
-### Model Selection
-![Model Selection](./screenshots/model-selection.png)
-*Browse and select from 20+ AI models with provider logos and capabilities*
+A modern AI chat app with multi-model consensus, file attachments, and a decent interface.
 
-### File Attachments
-![File Upload](./screenshots/file-upload.png)
-*Upload and analyze images and PDFs with supported models*
+## Tech Stack
 
-### Settings & API Key Management
-![Settings](./screenshots/settings.png)
-*Manage your OpenRouter API key and preferences*
+Nothing fancy, just solid tools:
+- **Next.js 15** with App Router
+- **TypeScript** (because sanity)
+- **Tailwind CSS 4** for styling
+- **Supabase** for auth & database (PostgreSQL)
+- **OpenRouter API** for all the AI models
+- **Framer Motion** for smooth animations
+- **React Markdown** with syntax highlighting
+- **Lucide React** for icons
 
-### Chat History & Sidebar
-![Chat Sidebar](./screenshots/chat-sidebar.png)
-*Organized chat history with conversation management*
+## Setup
 
-### Authentication
-![Login Interface](./screenshots/login.png)
-*Secure authentication with Supabase*
+### Getting Started
 
-> **Live Demo:** [https://t3-cloneathon.lukeschroeter.de/](https://t3-cloneathon.lukeschroeter.de/)
+1. **Get it running locally**
 
-A modern, feature-rich AI chat application built for the T3 Chat Cloneathon hosted by Theo Browne. This submission showcases advanced chat capabilities with multi-model consensus, file attachments, and a beautiful, responsive interface.
+2. **Make an account** - email, GitHub, Google, whatever
 
-## 🏆 Competition Entry
+3. **Add your OpenRouter API key** in settings
+   - Get one at [openrouter.ai](https://openrouter.ai) (it's free)
+   - Your key stays encrypted, don't worry
 
-This project is my submission for the **T3 Chat Cloneathon** - a competition to build the best T3 Chat clone within one week, competing for a **$10,000+ prize pool**.
+4. **Start chatting** - that's it
 
-## 🛠️ Tech Stack
+### Local Setup
 
-- **Framework:** Next.js 15 with App Router
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS 4
-- **Authentication:** Supabase Auth
-- **Database:** Supabase (PostgreSQL)
-- **AI Integration:** OpenRouter API
-- **Animations:** Framer Motion
-- **Icons:** Lucide React
-- **Markdown:** React Markdown with syntax highlighting
+```bash
+git clone [this-repo]
+npm install
+# Copy .env.example to .env.local and add your Supabase keys
+npm run dev
+```
 
-## 🧪 Testing Instructions
+You'll need to set up Supabase with the right tables, but that's pretty standard stuff.
 
-### Quick Start Testing
+## Features Worth Mentioning
 
-1. **Visit the Live Demo:** Navigate to [https://t3-cloneathon.lukeschroeter.de/](https://t3-cloneathon.lukeschroeter.de/)
-
-2. **Create an Account:** Register with your email address, github or google profile through the secure Supabase authentication system
-
-3. **Add Your API Key:** When prompted, enter your OpenRouter API key in the settings. This enables access to all 20+ AI models
-   - Don't have an OpenRouter key? Get one free at [openrouter.ai](https://openrouter.ai)
-   - Your key is encrypted and stored securely
-
-4. **Start Chatting:** You're ready to explore all features immediately!
-
-### Local Development Note
-
-**⚠️ Local testing is currently not supported and not recommended.** The application relies on Supabase database functions with specialized configurations that are complex to replicate locally. The live demo provides the full, intended experience with all features working seamlessly.
-
-For the best testing experience and to evaluate all competition features, please use the deployed version above.
-
-## 🎯 Key Features Deep Dive
-
-### Consensus Chat Mode
-One of the standout features is the **Consensus Chat** mode, where you can:
+### Consensus Chat
+The fun part - ask the same question to multiple AI models and see how they all think differently. Sometimes they agree, sometimes they don't. It's interesting.
 - Select multiple AI models simultaneously
 - Get responses from all selected models in parallel
 - Compare different AI perspectives on the same question
 - Perfect for complex problems requiring multiple viewpoints
 
-### Intelligent File Processing
-The application intelligently handles file uploads based on model capabilities:
+### Smart File Handling
+Upload images or PDFs and it'll only let you use models that actually support them. No more "this model doesn't support files" errors.
 - **Image Support:** JPEG, PNG, GIF, WebP (up to 32MB depending on model)
 - **PDF Support:** Full document analysis for supported models
 - **Smart Validation:** Only allows uploads for models that support the file type
 - **Visual Indicators:** Clear capability icons showing what each model supports
 
-### Advanced Chat Management
+### Chat Management
 - **Auto-generated Titles:** Conversations get intelligent titles based on content
 - **Persistent History:** All conversations saved and synced across devices
 - **Resumable Streams:** Continue interrupted conversations seamlessly
 - **Search & Organization:** Find past conversations quickly
 
-### Performance & UX
+### The Usual Stuff (But Done Well)
 - **Real-time Streaming:** See responses as they're generated
 - **Optimistic Updates:** Instant UI feedback for better user experience
 - **Keyboard Shortcuts:** Efficient navigation and interaction
 - **Loading States:** Clear feedback during all operations
+- **Dark Theme:** Eye-friendly interface that doesn't burn your retinas
 
-## 🔧 Architecture Highlights
+## AI Models
 
-### Frontend Architecture
-- **Component-based Design:** Modular, reusable React components
-- **Context API:** Centralized state management for chat functionality
-- **Custom Hooks:** Reusable logic for common operations
-- **TypeScript:** Full type safety throughout the application
-
-### Backend Architecture
-- **API Routes:** RESTful endpoints for all operations
-- **Database Schema:** Optimized PostgreSQL schema for chat data
-- **Authentication:** Secure JWT-based authentication with Supabase
-- **File Storage:** Efficient file upload and storage system
-
-### AI Integration
-- **OpenRouter Integration:** Unified API for multiple AI providers
-- **Streaming Support:** Real-time response streaming
-- **Error Handling:** Robust error handling and fallbacks
-- **Rate Limiting:** Built-in protection against API abuse
-
-## 🚀 Performance Features
-
-- **Lazy Loading:** Components loaded on demand
-- **Image Optimization:** Next.js automatic image optimization
-- **Caching:** Intelligent caching strategies for better performance
-- **Bundle Optimization:** Minimal bundle size with tree shaking
-- **Progressive Enhancement:** Works even with JavaScript disabled
-
-## 🎨 Design Philosophy
-
-The application follows modern design principles:
-- **Glassmorphism:** Beautiful glass-like UI elements
-- **Dark Theme:** Eye-friendly dark interface
-- **Micro-interactions:** Subtle animations for better UX
-- **Accessibility:** ARIA labels and keyboard navigation
-- **Consistency:** Unified design language throughout
-
-## 🔒 Security & Privacy
-
-- **Secure Authentication:** Industry-standard authentication with Supabase
-- **API Key Protection:** User API keys encrypted and stored securely
-- **Data Privacy:** User conversations and data properly protected
-- **HTTPS Only:** All communications encrypted in transit
-- **Input Validation:** Comprehensive input sanitization
-
-## 🌟 What Makes This Special
-
-This T3 Chat clone goes beyond the basic requirements by offering:
-
-1. **Unique Consensus Feature:** Compare multiple AI models simultaneously
-2. **Advanced File Processing:** Intelligent file handling based on model capabilities
-3. **Superior UX:** Polished interface with attention to detail
-4. **Performance Optimized:** Fast, responsive, and efficient
-5. **Extensible Architecture:** Built for future enhancements
-6. **Production Ready:** Deployed and accessible with proper error handling
-
-## 🤖 Supported AI Models
-
-The application supports **20+ cutting-edge AI models** from major providers:
+Supports 20+ models from the usual suspects:
 
 ### Google Models
 - Gemini 2.0 Flash (001 & Lite)
@@ -189,20 +111,35 @@ The application supports **20+ cutting-edge AI models** from major providers:
 - DeepSeek Chat V3 & R1 (Free)
 - X.AI Grok 3 Beta & Mini
 
+Nothing revolutionary, just good coverage of what's available.
 
-## 📝 License
+## Architecture
 
-This project is open source and available under the [MIT License](LICENSE).
+### Frontend
+- Component-based design with React
+- Context API for state management
+- Custom hooks for reusable logic
+- Full TypeScript coverage
 
-## 🙏 Acknowledgments
+### Backend
+- API routes for all operations
+- Optimized PostgreSQL schema
+- JWT-based authentication with Supabase
+- File upload and storage system
 
-- **[Theo Browne](https://github.com/t3dotgg)** for organizing the T3 Chat Cloneathon
-- **[OpenRouter](https://github.com/OpenRouterTeam)** for providing unified AI model access
-- **[Supabase](https://github.com/supabase)** for authentication and database services
-- **[Vercel](https://github.com/vercel)** for hosting and deployment platform
+### Performance
+- Lazy loading components
+- Next.js image optimization
+- Intelligent caching strategies
+- Minimal bundle size with tree shaking
 
----
+## Security & Privacy
 
-**Built with ❤️ for the T3 Chat Cloneathon**
+- Secure authentication with Supabase
+- API keys encrypted and stored securely
+- User data properly protected
+- HTTPS only, input validation, the works
 
-> This project demonstrates modern web development practices, AI integration, and user experience design. It's not just a clone—it's an evolution of the chat interface with unique features and polished execution.
+## License
+
+MIT - do whatever you want with it.
