@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Conversation, Message, Profile } from '@/types/chat';
 import { useSession } from 'next-auth/react';
+import { createClient } from '@supabase/supabase-js';
 
 interface ChatContextType {
   conversations: Conversation[];
@@ -294,4 +295,4 @@ export function useChat() {
     throw new Error('useChat must be used within a ChatProvider');
   }
   return context;
-} 
+}
