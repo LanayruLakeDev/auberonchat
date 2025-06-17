@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatProvider, useChat } from '@/contexts/ChatContext';
-import { createClient } from '@/lib/supabase-client';
+import { signOut } from 'next-auth/react';
 import { 
   Key, 
   Eye, 
@@ -486,11 +486,10 @@ function SettingsPageContent() {
   const [isLogoutLoading, setIsLogoutLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
-
   const handleLogout = async () => {
     setIsLogoutLoading(true);
     try {
-      await supabase.auth.signOut();
+      await signOut({ redirect: false });
       router.push('/login');
       router.refresh();
     } catch (error) {

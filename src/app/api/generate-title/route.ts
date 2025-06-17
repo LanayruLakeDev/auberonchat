@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import { TitleGenerator } from '@/lib/titleGenerator';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const session = await getServerSession(authOptions);
 
-    if (userError || !user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -15,14 +16,11 @@ export async function POST(request: NextRequest) {
 
     if (!userMessage || !conversationId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    // Get user's OpenRouter API key
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('openrouter_api_key')
-      .eq('id', user.id)
-      .single();
+    }    // Get user's OpenRouter API key
+    const profile = await prisma.profile.findUnique({
+      where: { userId: session.user.id },
+      select: { openrouter_api_key: true },
+    });
 
     if (!profile?.openrouter_api_key) {
       return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
@@ -30,19 +28,17 @@ export async function POST(request: NextRequest) {
 
     // Generate the title
     const titleGenerator = new TitleGenerator(profile.openrouter_api_key);
-    const generatedTitle = await titleGenerator.generateTitle(userMessage, assistantResponse);
+    const generatedTitle = await titleGenerator.generateTitle(userMessage, assistantResponse);    // Update the conversation with the new title
+    const updatedConversation = await prisma.conversation.update({
+      where: { 
+        id: conversationId,
+        userId: session.user.id 
+      },
+      data: { title: generatedTitle },
+    });
 
-    // Update the conversation with the new title
-    const { data: updatedConversation, error: updateError } = await supabase
-      .from('conversations')
-      .update({ title: generatedTitle })
-      .eq('id', conversationId)
-      .eq('user_id', user.id)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error('Failed to update conversation title:', updateError);
+    if (!updatedConversation) {
+      console.error('Failed to update conversation title');
       return NextResponse.json({ error: 'Failed to update title' }, { status: 500 });
     }
 
