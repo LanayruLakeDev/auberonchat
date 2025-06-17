@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Github, Mail, Lock, Eye, EyeOff, Sparkles } from 'lucide-react'
+import { Github, Mail, Lock, Eye, EyeOff, Sparkles, Users } from 'lucide-react'
 import Image from 'next/image'
 
 export default function LoginPage() {
@@ -20,6 +20,29 @@ export default function LoginPage() {
 
   const supabase = createClient()
   const router = useRouter()
+
+  const handleGuestLogin = async () => {
+    setLoading(true)
+    setError('')
+
+    try {
+      // Sign in as a shared guest account
+      const { error } = await supabase.auth.signInWithPassword({
+        email: 'guest@auberonchat.com',
+        password: 'guestuser123456',
+      })
+      
+      if (error) {
+        setError('Guest login temporarily unavailable. Please try again.')
+      } else {
+        router.push('/chat')
+      }
+    } catch (err) {
+      setError('An unexpected error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,7 +72,7 @@ export default function LoginPage() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/chat`,
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/chat`,
           },
         })
         
@@ -74,7 +97,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=/chat`,
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback?next=/chat`,
         },
       })
       
@@ -96,7 +119,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=/chat`,
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback?next=/chat`,
         },
       })
       
@@ -148,7 +171,7 @@ export default function LoginPage() {
               transition={{ delay: 0.4 }}
               className="text-white/60"
             >
-              {isLogin ? 'Sign in to your account' : 'Create a new account to get started'}
+              {isLogin ? 'Sign in to your account or try as guest' : 'Create a new account to get started'}
             </motion.p>
           </div>
 
@@ -177,6 +200,23 @@ export default function LoginPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
+              onClick={handleGuestLogin}
+              disabled={loading}
+              className="cursor-pointer w-full p-4 glass-hover rounded-xl border-2 border-purple-500/30 bg-purple-500/10 text-white flex items-center justify-center gap-3 transition-all hover:border-purple-400/50 hover:bg-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+            >
+              <Users size={20} className="text-purple-400" />
+              <div className="text-left">
+                <div className="font-semibold">Continue as Guest</div>
+                <div className="text-xs text-white/60">Try AI chat instantly - no signup required</div>
+              </div>
+            </motion.button>
+
+            <motion.button
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
               onClick={handleGoogleAuth}
               disabled={loading}
               className="cursor-pointer w-full p-3 glass-hover rounded-xl border border-white/10 text-white flex items-center justify-center gap-3 transition-all hover:border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -196,7 +236,7 @@ export default function LoginPage() {
             <motion.button
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
+              transition={{ delay: 0.7 }}
               onClick={handleGithubAuth}
               disabled={loading}
               className="cursor-pointer w-full p-3 glass-hover rounded-xl border border-white/10 text-white flex items-center justify-center gap-3 transition-all hover:border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -221,7 +261,7 @@ export default function LoginPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
+              transition={{ delay: 0.8 }}
             >
               <label className="block text-sm font-medium text-white/80 mb-2">
                 Email Address
@@ -242,7 +282,7 @@ export default function LoginPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
+              transition={{ delay: 0.9 }}
             >
               <label className="block text-sm font-medium text-white/80 mb-2">
                 Password
@@ -271,7 +311,7 @@ export default function LoginPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.9 }}
+                transition={{ delay: 1.0 }}
               >
                 <label className="block text-sm font-medium text-white/80 mb-2">
                   Confirm Password
@@ -300,7 +340,7 @@ export default function LoginPage() {
             <motion.button
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.0 }}
+              transition={{ delay: 1.1 }}
               type="submit"
               disabled={loading}
               className="w-full btn-primary mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -321,7 +361,7 @@ export default function LoginPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.1 }}
+            transition={{ delay: 1.2 }}
             className="mt-6 text-center"
           >
             <span className="text-white/60">
@@ -346,7 +386,7 @@ export default function LoginPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.2 }}
+            transition={{ delay: 1.3 }}
             className="mt-6 pt-4 border-t border-white/10 text-center"
           >
             <div className="flex justify-center gap-4 text-xs text-white/40 mb-3">
@@ -370,13 +410,12 @@ export default function LoginPage() {
               >
                 Disclaimer
               </a>
-            </div>
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.3 }}
-              className="flex justify-center"
-            >
+            </div>              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.4 }}
+                className="flex justify-center"
+              >
               <motion.a
                 href="https://github.com/lulkebit/t3-cloneathon"
                 target="_blank"
