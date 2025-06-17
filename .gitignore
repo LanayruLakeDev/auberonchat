@@ -82,13 +82,11 @@ next-env.d.ts
 ehthumbs.db
 Thumbs.db
 
-# Database
-.env
-.env.local
-.env.production
+# Supabase
+.supabase
 
-# Prisma
-/prisma/migrations/
+# Auth0
+.auth0
 
 # Tailwind CSS
 tailwind.config.js.map
