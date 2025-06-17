@@ -3,6 +3,25 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { OpenRouterService } from '@/lib/openrouter';
+import { Prisma, Conversation } from '@prisma/client'; // Added Prisma, Conversation
+
+// Define the payload for deriving the MessageWithAttachments type
+const messagePayload = Prisma.validator<Prisma.MessageDefaultArgs>()({
+  include: {
+    attachments: {
+      select: {
+        id: true,
+        filename: true,
+        fileType: true,   // Assuming these camelCase keys are intended for the output
+        fileSize: true,   // and Prisma is configured to handle this (e.g. via @map or if schema actually uses camelCase)
+        fileUrl: true,
+        createdAt: true,
+      },
+    },
+  },
+});
+
+type MessageWithAttachments = Prisma.MessageGetPayload<typeof messagePayload>;
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,9 +31,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { conversationId, message, model, attachments = [] } = await request.json();
+    // It's good practice to type the request body if its structure is known.
+    // For now, focusing on the reported error.
+    const { conversationId, message, model, attachments: requestAttachments = [] } = await request.json();
 
-    if ((!message || message.trim() === '') && attachments.length === 0) {
+    if ((!message || message.trim() === '') && requestAttachments.length === 0) {
       return NextResponse.json({ error: 'Message or attachments required' }, { status: 400 });
     }
 
@@ -31,8 +52,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
     }
 
-    let conversation = null;
-    let messages = [];
+    let conversation: Conversation | null = null; // Explicitly typed
+    let messages: MessageWithAttachments[] = []; // Explicitly typed
 
     if (conversationId) {
       const existingConversation = await prisma.conversation.findFirst({
@@ -47,7 +68,7 @@ export async function POST(request: NextRequest) {
         
         const existingMessages = await prisma.message.findMany({
           where: { conversationId: conversationId },
-          include: {
+          include: { // This include must match the payload definition above
             attachments: {
               select: {
                 id: true,
@@ -62,7 +83,7 @@ export async function POST(request: NextRequest) {
           orderBy: { createdAt: 'asc' },
         });
 
-        messages = existingMessages || [];
+        messages = existingMessages; // Corrected assignment (findMany returns T[])
       }
     }
 
@@ -95,8 +116,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Save attachments if any
-    if (attachments.length > 0) {
-      const attachmentInserts = attachments.map((attachment: any) => ({
+    if (requestAttachments.length > 0) {
+      // TODO: Type 'attachment' properly here. For now, it's 'any' from requestAttachments.
+      const attachmentInserts = requestAttachments.map((attachment: any) => ({
         messageId: userMessage.id,
         filename: attachment.filename,
         fileType: attachment.file_type,
@@ -126,8 +148,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Add attachments in proper OpenRouter format
-    if (attachments.length > 0) {
-      for (const attachment of attachments) {
+    if (requestAttachments.length > 0) {
+      for (const attachment of requestAttachments) {
         if (attachment.file_type.startsWith('image/')) {
           // For images, use image_url format
           contentParts.push({
