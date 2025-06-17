@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Conversation, Message, Profile } from '@/types/chat';
 import { useSession } from 'next-auth/react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
 interface ChatContextType {
   conversations: Conversation[];
@@ -136,7 +136,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     try {
-      const supabase = createClient();
       const { data: { user }, error } = await supabase.auth.getUser();
       if (!error && user) {
         setUser(user);
