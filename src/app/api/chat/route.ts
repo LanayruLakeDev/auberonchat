@@ -1,40 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { Message, Attachment as ChatAttachment } from '@/types/chat'; // Renamed Attachment to ChatAttachment to avoid conflict
+import { createClient } from '@/lib/supabase-server';
 import { OpenRouterService } from '@/lib/openrouter';
-import { Prisma } from '@prisma/client'; // Import Prisma
-
-// Define the type for messages returned by Prisma, including attachments
-const prismaMessageWithAttachments = Prisma.validator<Prisma.MessageDefaultArgs>()({
-  include: {
-    attachments: {
-      select: {
-        id: true,
-        filename: true,
-        fileType: true,
-        fileSize: true,
-        fileUrl: true,
-        createdAt: true,
-      },
-    },
-  },
-});
-type PrismaMessageWithAttachments = Prisma.MessageGetPayload<typeof prismaMessageWithAttachments>;
-
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (!session?.user?.id) {
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { conversationId, message, model, attachments: requestAttachments = [] } = await request.json();
+    const { conversationId, message, model, attachments = [] } = await request.json();
 
-    if ((!message || message.trim() === '') && requestAttachments.length === 0) {
+    if ((!message || message.trim() === '') && attachments.length === 0) {
       return NextResponse.json({ error: 'Message or attachments required' }, { status: 400 });
     }
 
@@ -42,112 +21,97 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Model is required' }, { status: 400 });
     }
 
-    const profile = await prisma.profile.findUnique({
-      where: { userId: session.user.id },
-      select: { openrouter_api_key: true },
-    });
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('openrouter_api_key')
+      .eq('id', user.id)
+      .single();
 
     if (!profile?.openrouter_api_key) {
       return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
     }
-    
-    let conversation = null;
-    let messages: Message[] = [];
 
-    // Helper function to map Prisma message to chat Message type
-    const mapPrismaMessageToChatMessage = (prismaMsg: PrismaMessageWithAttachments): Message => {
-      return {
-        id: prismaMsg.id,
-        conversation_id: prismaMsg.conversationId,
-        role: prismaMsg.role as 'user' | 'assistant' | 'system', // Assuming role from Prisma is compatible
-        content: prismaMsg.content,
-        created_at: prismaMsg.createdAt.toISOString(),
-        attachments: prismaMsg.attachments?.map(att => ({
-          id: att.id,
-          filename: att.filename,
-          file_type: att.fileType,
-          file_size: Number(att.fileSize), // Convert bigint to number
-          file_url: att.fileUrl,
-          created_at: att.createdAt.toISOString(),
-        })),
-      };
-    };
+    let conversation = null;
+    let messages = [];
 
     if (conversationId) {
-      const existingConversation = await prisma.conversation.findFirst({
-        where: { 
-          id: conversationId,
-          userId: session.user.id 
-        },
-      });
+      const { data: existingConversation } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('id', conversationId)
+        .eq('user_id', user.id)
+        .single();
 
       if (existingConversation) {
         conversation = existingConversation;
         
-        const existingMessagesFromPrisma = await prisma.message.findMany({
-          where: { conversationId: conversationId },
-          include: {
-            attachments: {
-              select: {
-                id: true,
-                filename: true,
-                fileType: true,
-                fileSize: true,
-                fileUrl: true,
-                createdAt: true,
-              },
-            },
-          },
-          orderBy: { createdAt: 'asc' },
-        });
+        const { data: existingMessages } = await supabase
+          .from('messages')
+          .select(`
+            *,
+            attachments (
+              id,
+              filename,
+              file_type,
+              file_size,
+              file_url,
+              created_at
+            )
+          `)
+          .eq('conversation_id', conversationId)
+          .order('created_at', { ascending: true });
 
-        messages = existingMessagesFromPrisma.map(mapPrismaMessageToChatMessage);
+        messages = existingMessages || [];
       }
     }
 
     if (!conversation) {
-      const newConversation = await prisma.conversation.create({
-        data: {
-          userId: session.user.id,
+      const { data: newConversation, error: conversationError } = await supabase
+        .from('conversations')
+        .insert({
+          user_id: user.id,
           title: 'New Chat',
           model,
-        },
-      });
+        })
+        .select()
+        .single();
 
-      if (!newConversation) {
+      if (conversationError || !newConversation) {
         return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 });
       }
 
       conversation = newConversation;
     }
 
-    const userMessage = await prisma.message.create({
-      data: {
-        conversationId: conversation.id,
+    const { data: userMessage, error: messageError } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversation.id,
         role: 'user',
         content: message || '',
-      },
-    });
+      })
+      .select()
+      .single();
 
-    if (!userMessage) {
+    if (messageError || !userMessage) {
       return NextResponse.json({ error: 'Failed to save user message' }, { status: 500 });
     }
 
     // Save attachments if any
-    if (requestAttachments.length > 0) {
-      const attachmentInserts = requestAttachments.map((attachment: any) => ({ // TODO: Type 'attachment' properly
-        messageId: userMessage.id,
+    if (attachments.length > 0) {
+      const attachmentInserts = attachments.map((attachment: any) => ({
+        message_id: userMessage.id,
         filename: attachment.filename,
-        fileType: attachment.file_type,
-        fileSize: attachment.file_size,
-        fileUrl: attachment.file_url,
+        file_type: attachment.file_type,
+        file_size: attachment.file_size,
+        file_url: attachment.file_url,
       }));
 
-      try {
-        await prisma.attachment.createMany({
-          data: attachmentInserts,
-        });
-      } catch (attachmentError) {
+      const { error: attachmentError } = await supabase
+        .from('attachments')
+        .insert(attachmentInserts);
+
+      if (attachmentError) {
         console.error('Failed to save attachments:', attachmentError);
         // Continue anyway, don't fail the entire request
       }
@@ -165,8 +129,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Add attachments in proper OpenRouter format
-    if (requestAttachments.length > 0) {
-      for (const attachment of requestAttachments) {
+    if (attachments.length > 0) {
+      for (const attachment of attachments) {
         if (attachment.file_type.startsWith('image/')) {
           // For images, use image_url format
           contentParts.push({
@@ -303,13 +267,13 @@ export async function POST(request: NextRequest) {
             request.headers.get('origin') || undefined
           );
 
-          await prisma.message.create({
-            data: {
-              conversationId: conversation.id,
+          await supabase
+            .from('messages')
+            .insert({
+              conversation_id: conversation.id,
               role: 'assistant',
               content: assistantResponse,
-            },
-          });
+            });
 
           // Generate title for new conversations after first response
           if (messages.length === 0) {
@@ -355,13 +319,13 @@ export async function POST(request: NextRequest) {
           
           // Save error message as assistant response for user to see
           try {
-            await prisma.message.create({
-              data: {
-                conversationId: conversation.id,
+            await supabase
+              .from('messages')
+              .insert({
+                conversation_id: conversation.id,
                 role: 'assistant',
                 content: `❌ **Error**: ${errorMessage}`,
-              },
-            });
+              });
           } catch (dbError) {
             console.error('Failed to save error message:', dbError);
           }
@@ -387,4 +351,4 @@ export async function POST(request: NextRequest) {
     console.error('Error in chat route:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+} 

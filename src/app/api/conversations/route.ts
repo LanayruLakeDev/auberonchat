@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { createClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const conversations = await prisma.conversation.findMany({
-      where: { userId: session.user.id },
-      orderBy: { updatedAt: 'desc' },
-    });
+    const { data: conversations, error } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 });
+    }
 
     return NextResponse.json({ conversations });
   } catch (error) {
@@ -25,28 +29,31 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const conversationId = searchParams.get('id');
 
-    if (!id) {
-      return NextResponse.json({ error: 'Conversation ID is required' }, { status: 400 });
+    if (!conversationId) {
+      return NextResponse.json({ error: 'Missing conversation ID' }, { status: 400 });
     }
 
-    // Verify the conversation belongs to the user and delete it
-    await prisma.conversation.delete({
-      where: {
-        id: id,
-        userId: session.user.id,
-      },
-    });
+    const { error } = await supabase
+      .from('conversations')
+      .delete()
+      .eq('id', conversationId)
+      .eq('user_id', user.id);
 
-    return NextResponse.json({ message: 'Conversation deleted successfully' });
+    if (error) {
+      return NextResponse.json({ error: 'Failed to delete conversation' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting conversation:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -55,9 +62,10 @@ export async function DELETE(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -67,17 +75,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const conversation = await prisma.conversation.create({
-      data: {
-        userId: session.user.id,
+    const { data: conversation, error } = await supabase
+      .from('conversations')
+      .insert({
+        user_id: user.id,
         title,
         model,
-      },
-    });
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 });
+    }
 
     return NextResponse.json({ conversation });
   } catch (error) {
     console.error('Error creating conversation:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+} 

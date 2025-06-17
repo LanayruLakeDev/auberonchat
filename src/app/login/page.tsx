@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn, getSession } from 'next-auth/react'
+import { createClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Github, Mail, Lock, Eye, EyeOff, Sparkles } from 'lucide-react'
@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
+  const supabase = createClient()
   const router = useRouter()
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -28,14 +29,13 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
-        const result = await signIn('credentials', {
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
-          redirect: false,
         })
         
-        if (result?.error) {
-          setError('Invalid email or password')
+        if (error) {
+          setError(error.message)
         } else {
           router.push('/chat')
         }
@@ -43,18 +43,20 @@ export default function LoginPage() {
         if (password !== confirmPassword) {
           setError('Passwords do not match')
           return
-        }        // For sign up, we'll use the credentials provider which creates users automatically
-        const result = await signIn('credentials', {
+        }
+
+        const { error } = await supabase.auth.signUp({
           email,
           password,
-          redirect: false,
+          options: {
+            emailRedirectTo: `${window.location.origin}/chat`,
+          },
         })
         
-        if (result?.error) {
-          setError('Failed to create account')
+        if (error) {
+          setError(error.message)
         } else {
-          setMessage('Account created successfully! You can now sign in.')
-          setIsLogin(true)
+          setMessage('Check your email for the confirmation link')
         }
       }
     } catch (err) {
@@ -69,9 +71,16 @@ export default function LoginPage() {
     setError('')
 
     try {
-      await signIn('github', {
-        callbackUrl: '/chat',
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=/chat`,
+        },
       })
+      
+      if (error) {
+        setError(error.message)
+      }
     } catch (err) {
       setError('An unexpected error occurred')
     } finally {
@@ -84,9 +93,16 @@ export default function LoginPage() {
     setError('')
 
     try {
-      await signIn('google', {
-        callbackUrl: '/chat',
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=/chat`,
+        },
       })
+      
+      if (error) {
+        setError(error.message)
+      }
     } catch (err) {
       setError('An unexpected error occurred')
     } finally {
@@ -333,7 +349,7 @@ export default function LoginPage() {
             transition={{ delay: 1.2 }}
             className="mt-6 pt-4 border-t border-white/10 text-center"
           >
-            <div className="flex justify-center gap-4 text-xs text-white/40">
+            <div className="flex justify-center gap-4 text-xs text-white/40 mb-3">
               <a 
                 href="/nutzungsbedingungen" 
                 className="hover:text-white/60 transition-colors"
@@ -355,6 +371,30 @@ export default function LoginPage() {
                 Disclaimer
               </a>
             </div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.3 }}
+              className="flex justify-center"
+            >
+              <motion.a
+                href="https://github.com/lulkebit/t3-cloneathon"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-3 py-2 text-white/40 hover:text-white/70 transition-all duration-200 hover:bg-white/5 rounded-lg"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Image 
+                  src="/logos/github.svg" 
+                  alt="GitHub" 
+                  width={16} 
+                  height={16}
+                  className="brightness-0 invert opacity-60"
+                />
+                <span className="text-xs font-medium">Project Info & Source Code</span>
+              </motion.a>
+            </motion.div>
           </motion.div>
         </motion.div>
       </motion.div>

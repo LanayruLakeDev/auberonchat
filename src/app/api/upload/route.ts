@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { createClient } from '@/lib/supabase-server';
 import { canModelProcessFileType, getMaxFileSizeForModel } from '@/lib/model-capabilities';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -12,18 +11,12 @@ const ALLOWED_TYPES = [
   'application/pdf'
 ];
 
-// TODO: Implement a storage solution to replace Supabase Storage
-// Options include:
-// 1. AWS S3
-// 2. Google Cloud Storage
-// 3. Azure Blob Storage
-// 4. Other file storage services
-
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (!session?.user) {
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -64,28 +57,37 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
     const fileExtension = file.name.split('.').pop();
-    const fileName = `${session.user.id}/${timestamp}_${randomString}.${fileExtension}`;
+    const fileName = `${user.id}/${timestamp}_${randomString}.${fileExtension}`;
 
-    // TODO: Replace with actual file upload implementation
-    // For now, return a placeholder response
-    return NextResponse.json({ 
-      error: 'File upload functionality is currently being migrated. Please check back later.' 
-    }, { status: 501 });
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('attachments')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
 
-    /* 
-    // This is where the actual upload implementation would go
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('attachments')
+      .getPublicUrl(fileName);
+
     return NextResponse.json({
-      id: uploadResultId,
+      id: uploadData.id || randomString,
       filename: file.name,
       file_type: file.type,
       file_size: file.size,
-      file_url: uploadedFileUrl,
+      file_url: publicUrl,
       storage_path: fileName
     });
-    */
 
   } catch (error) {
     console.error('Error uploading file:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+} 

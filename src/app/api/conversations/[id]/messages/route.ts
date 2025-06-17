@@ -1,48 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { createClient } from '@/lib/supabase-server';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (!session?.user?.id) {
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }    const { id: conversationId } = await params;
+    }
+
+    const { id: conversationId } = await params;
 
     // Verify the conversation belongs to the user
-    const conversation = await prisma.conversation.findFirst({
-      where: { 
-        id: conversationId,
-        userId: session.user.id 
-      },
-      select: { id: true },
-    });
+    const { data: conversation, error: convError } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', conversationId)
+      .eq('user_id', user.id)
+      .single();
 
-    if (!conversation) {
+    if (convError || !conversation) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
-    const messages = await prisma.message.findMany({
-      where: { conversationId: conversationId },
-      include: {
-        attachments: {
-          select: {
-            id: true,
-            filename: true,
-            fileType: true,
-            fileSize: true,
-            fileUrl: true,
-            createdAt: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+    const { data: messages, error } = await supabase
+      .from('messages')
+      .select(`
+        *,
+        attachments (
+          id,
+          filename,
+          file_type,
+          file_size,
+          file_url,
+          created_at
+        )
+      `)
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
+    }
 
     return NextResponse.json({ messages });
   } catch (error) {
@@ -56,9 +59,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (!session?.user?.id) {
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -74,28 +78,29 @@ export async function POST(
     }
 
     // Verify the conversation belongs to the user
-    const conversation = await prisma.conversation.findFirst({
-      where: { 
-        id: conversationId,
-        userId: session.user.id 
-      },
-      select: { id: true },
-    });
+    const { data: conversation, error: convError } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', conversationId)
+      .eq('user_id', user.id)
+      .single();
 
-    if (!conversation) {
+    if (convError || !conversation) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
     // Insert the new message
-    const message = await prisma.message.create({
-      data: {
-        conversationId: conversationId,
+    const { data: message, error: messageError } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
         role,
         content,
-      },
-    });
+      })
+      .select()
+      .single();
 
-    if (!message) {
+    if (messageError || !message) {
       return NextResponse.json({ error: 'Failed to create message' }, { status: 500 });
     }
 
@@ -104,4 +109,4 @@ export async function POST(
     console.error('Error creating message:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+} 

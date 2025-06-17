@@ -1,45 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { createClient } from '@/lib/supabase-server';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; messageId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (!session?.user?.id) {
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id: conversationId, messageId } = await params;
 
     // Verify the conversation belongs to the user
-    const conversation = await prisma.conversation.findFirst({
-      where: { 
-        id: conversationId,
-        userId: session.user.id 
-      },
-      select: { id: true },
-    });
+    const { data: conversation, error: convError } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', conversationId)
+      .eq('user_id', user.id)
+      .single();
 
-    if (!conversation) {
+    if (convError || !conversation) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
     // Delete the specific message
-    await prisma.message.delete({
-      where: {
-        id: messageId,
-        conversationId: conversationId,
-      },
-    });
+    const { error: deleteError } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', messageId)
+      .eq('conversation_id', conversationId);
+
+    if (deleteError) {
+      console.error('Error deleting message:', deleteError);
+      return NextResponse.json({ error: 'Failed to delete message' }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error in delete message route:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+} 

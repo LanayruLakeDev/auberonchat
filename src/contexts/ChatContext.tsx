@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Conversation, Message, Profile } from '@/types/chat';
-import { useSession } from 'next-auth/react';
+import { createClient } from '@/lib/supabase-client';
 
 interface ChatContextType {
   conversations: Conversation[];
@@ -29,7 +29,6 @@ interface ChatContextType {
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -37,15 +36,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [newConversationIds, setNewConversationIds] = useState<Set<string>>(new Set());
-
-  // Update user state when session changes
-  useEffect(() => {
-    if (session?.user) {
-      setUser(session.user);
-    } else {
-      setUser(null);
-    }
-  }, [session]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -142,10 +132,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       console.error('Error fetching profile:', error);
     }
   };
+
   const refreshUser = async () => {
-    // No need to refresh user from Supabase, NextAuth session handles this
-    // User state is automatically updated via session effect above
-    return;
+    try {
+      const supabase = createClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (!error && user) {
+        setUser(user);
+      }
+    } catch (error) {
+      console.error('Error fetching user:', error);
+    }
   };
 
   const createNewConversation = () => {
@@ -297,4 +294,4 @@ export function useChat() {
     throw new Error('useChat must be used within a ChatProvider');
   }
   return context;
-}
+} 

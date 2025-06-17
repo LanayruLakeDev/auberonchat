@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from '@/contexts/ChatContext';
-import { User, Bot, Sparkles, Copy, Check, RotateCcw, Loader2, FileImage, FileText, Download, Users } from 'lucide-react';
+import { User, Sparkles, Copy, Check, RotateCcw, Loader2, FileImage, FileText, Download, Users } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingIndicator } from './LoadingIndicator';
 import { TypeWriter } from './TypeWriter';
@@ -35,9 +35,17 @@ const formatModelName = (model: string) => {
 };
 
 const getUserDisplayName = (user: any) => {
-  if (!user) return 'You';
-  // Use NextAuth user properties: name or email
-  return user.name || user.email || 'You';
+  if (!user?.user_metadata) return 'You';
+  
+  const metadata = user.user_metadata;
+  return metadata.full_name || 
+         metadata.name || 
+         metadata.display_name || 
+         metadata.first_name ||
+         (metadata.given_name && metadata.family_name ? `${metadata.given_name} ${metadata.family_name}` : null) ||
+         metadata.given_name ||
+         metadata.nickname ||
+         'You';
 };
 
 const formatFileSize = (bytes: number) => {
@@ -171,7 +179,11 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
         <div className="text-center max-w-md">
           <div className="w-20 h-20 mx-auto mb-6 glass-strong rounded-3xl flex items-center justify-center relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20"></div>
-            <Bot size={32} className="text-blue-400 relative z-10" />
+            <img 
+              src="/ai.png" 
+              alt="AI Assistant" 
+              className="w-14 h-14 object-contain relative z-10"
+            />
           </div>
           
           <h3 className="text-2xl font-bold text-white mb-4">
@@ -214,14 +226,14 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
               <div className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden ${
                 message.role === 'user' 
                   ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30' 
-                  : (message.isConsensus || (message.content && message.content.startsWith('[{') && message.content.includes('\\"model\\"')))
+                  : (message.isConsensus || (message.content && message.content.startsWith('[{') && message.content.includes('"model"')))
                     ? 'bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-400/30'
                     : 'bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-400/30'
               }`}>
                 {message.role === 'user' ? (
-                  user?.image ? (
+                  user?.user_metadata?.avatar_url ? (
                     <img 
-                      src={user.image} 
+                      src={user.user_metadata.avatar_url} 
                       alt="User Avatar" 
                       className="w-full h-full object-cover"
                     />
@@ -231,7 +243,7 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
                 ) : (
                   (() => {
                     // Check if this is a consensus message
-                    const isConsensusMessage = message.isConsensus || (message.content && message.content.startsWith('[{') && message.content.includes('\\"model\\"'));
+                    const isConsensusMessage = message.isConsensus || (message.content && message.content.startsWith('[{') && message.content.includes('"model"'));
                     
                     if (isConsensusMessage) {
                       return <Users size={16} className="text-purple-400" />;
@@ -256,8 +268,8 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
                       );
                     }
                     
-                    // Fallback to Bot icon for assistant messages
-                    return <Bot size={16} className="text-blue-400" />;
+                    // Fallback to AI image for assistant messages
+                    return <img src="/ai.png" alt="AI Assistant" className="w-4 h-4 object-contain" />;
                   })()
                 )}
               </div>
@@ -270,7 +282,7 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
                 }`}>
                   {message.role === 'user' 
                     ? getUserDisplayName(user)
-                    : (message.isConsensus || (message.content && message.content.startsWith('[{') && message.content.includes('\\"model\\"')))
+                    : (message.isConsensus || (message.content && message.content.startsWith('[{') && message.content.includes('"model"')))
                       ? 'Multi-Model Consensus'
                       : activeConversation?.model 
                         ? formatModelName(activeConversation.model)
@@ -304,9 +316,9 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
                       <div className={`mb-3 flex flex-wrap gap-2 ${
                         message.role === 'user' ? 'justify-end' : 'justify-start'
                       }`}>
-                        {message.attachments.map((attachment, idx) => (
+                        {message.attachments.map((attachment, index) => (
                           <div
-                            key={attachment.id || idx}
+                            key={attachment.id || index}
                             className="flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm max-w-xs"
                           >
                             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -353,14 +365,14 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
                       <MarkdownRenderer 
                         content={message.content} 
                         isUserMessage={true}
-                        // className="text-right" // This was causing issues, MarkdownRenderer handles alignment
+                        className="text-right"
                       />
                     )}
                   </div>
                 ) : (
                   <div className="relative">
                     <div>
-                      {message.isConsensus || (message.content && message.content.startsWith('[{') && message.content.includes('\\"model\\"')) ? (
+                      {message.isConsensus || (message.content && message.content.startsWith('[{') && message.content.includes('"model"')) ? (
                         (() => {
                           let consensusResponses: ConsensusResponse[] = [];
                           try {
@@ -373,13 +385,13 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
                                 consensusResponses = parsed;
                               } else {
                                 // If it's not consensus data, fall back to regular rendering
-                                return <MarkdownRenderer content={message.content || ''} />;
+                                return <MarkdownRenderer content={message.content} />;
                               }
                             }
                           } catch (e) {
                             console.error('Error parsing consensus responses:', e);
                             // If parsing fails, render as regular markdown
-                            return <MarkdownRenderer content={message.content || ''} />;
+                            return <MarkdownRenderer content={message.content} />;
                           }
                           
                           return (
@@ -393,21 +405,21 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
                         <LoadingIndicator />
                       ) : message.isStreaming ? (
                         <TypeWriter 
-                          text={message.content || ''} 
+                          text={message.content} 
                           isComplete={false}
                           speed={15}
                           typingMode="character"
                         />
                       ) : (
-                        <MarkdownRenderer content={message.content || ''} />
+                        <MarkdownRenderer content={message.content} />
                       )}
                     </div>
                     
-                    {!(message.isConsensus || (message.content && message.content.startsWith('[{') && message.content.includes('\\"model\\"'))) && message.content && (
+                    {!(message.isConsensus || (message.content && message.content.startsWith('[{') && message.content.includes('"model"'))) && (
                       <div className="flex justify-start gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <div className="relative group/copy">
                           <button
-                            onClick={() => handleCopy(message.id, message.content || '')}
+                            onClick={() => handleCopy(message.id, message.content)}
                             className="cursor-pointer p-2 rounded-lg hover:bg-white/10 transition-colors duration-150"
                           >
                             {copiedId === message.id ? (
@@ -452,4 +464,4 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
       <div ref={messagesEndRef} />
     </div>
   );
-}
+} 
