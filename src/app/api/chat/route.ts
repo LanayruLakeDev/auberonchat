@@ -2,8 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { Message } from '@/types/chat';
+import { Message, Attachment as ChatAttachment } from '@/types/chat'; // Renamed Attachment to ChatAttachment to avoid conflict
 import { OpenRouterService } from '@/lib/openrouter';
+import { Prisma } from '@prisma/client'; // Import Prisma
+
+// Define the type for messages returned by Prisma, including attachments
+const prismaMessageWithAttachments = Prisma.validator<Prisma.MessageDefaultArgs>()({
+  include: {
+    attachments: {
+      select: {
+        id: true,
+        filename: true,
+        fileType: true,
+        fileSize: true,
+        fileUrl: true,
+        createdAt: true,
+      },
+    },
+  },
+});
+type PrismaMessageWithAttachments = Prisma.MessageGetPayload<typeof prismaMessageWithAttachments>;
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,9 +32,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { conversationId, message, model, attachments = [] } = await request.json();
+    const { conversationId, message, model, attachments: requestAttachments = [] } = await request.json();
 
-    if ((!message || message.trim() === '') && attachments.length === 0) {
+    if ((!message || message.trim() === '') && requestAttachments.length === 0) {
       return NextResponse.json({ error: 'Message or attachments required' }, { status: 400 });
     }
 
@@ -30,8 +49,29 @@ export async function POST(request: NextRequest) {
 
     if (!profile?.openrouter_api_key) {
       return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
-    }    let conversation = null;
+    }
+    
+    let conversation = null;
     let messages: Message[] = [];
+
+    // Helper function to map Prisma message to chat Message type
+    const mapPrismaMessageToChatMessage = (prismaMsg: PrismaMessageWithAttachments): Message => {
+      return {
+        id: prismaMsg.id,
+        conversation_id: prismaMsg.conversationId,
+        role: prismaMsg.role as 'user' | 'assistant' | 'system', // Assuming role from Prisma is compatible
+        content: prismaMsg.content,
+        created_at: prismaMsg.createdAt.toISOString(),
+        attachments: prismaMsg.attachments?.map(att => ({
+          id: att.id,
+          filename: att.filename,
+          file_type: att.fileType,
+          file_size: Number(att.fileSize), // Convert bigint to number
+          file_url: att.fileUrl,
+          created_at: att.createdAt.toISOString(),
+        })),
+      };
+    };
 
     if (conversationId) {
       const existingConversation = await prisma.conversation.findFirst({
@@ -44,7 +84,7 @@ export async function POST(request: NextRequest) {
       if (existingConversation) {
         conversation = existingConversation;
         
-        const existingMessages = await prisma.message.findMany({
+        const existingMessagesFromPrisma = await prisma.message.findMany({
           where: { conversationId: conversationId },
           include: {
             attachments: {
@@ -61,7 +101,7 @@ export async function POST(request: NextRequest) {
           orderBy: { createdAt: 'asc' },
         });
 
-        messages = existingMessages || [];
+        messages = existingMessagesFromPrisma.map(mapPrismaMessageToChatMessage);
       }
     }
 
@@ -94,8 +134,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Save attachments if any
-    if (attachments.length > 0) {
-      const attachmentInserts = attachments.map((attachment: any) => ({
+    if (requestAttachments.length > 0) {
+      const attachmentInserts = requestAttachments.map((attachment: any) => ({ // TODO: Type 'attachment' properly
         messageId: userMessage.id,
         filename: attachment.filename,
         fileType: attachment.file_type,
@@ -125,8 +165,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Add attachments in proper OpenRouter format
-    if (attachments.length > 0) {
-      for (const attachment of attachments) {
+    if (requestAttachments.length > 0) {
+      for (const attachment of requestAttachments) {
         if (attachment.file_type.startsWith('image/')) {
           // For images, use image_url format
           contentParts.push({
