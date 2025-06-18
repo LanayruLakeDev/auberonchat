@@ -69,7 +69,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       // Only set active conversation if:
       // 1. We found a conversation with the URL ID
       // 2. It's different from the current active conversation
-      // 3. We don't already have an active conversation with the same ID (to prevent switching during title updates)
       if (conversation && (!activeConversation || activeConversation.id !== conversation.id)) {
         setActiveConversation(conversation);
       }
@@ -261,12 +260,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setMessages(prev => prev.filter(msg => 
           msg.conversation_id === activeConversation.id
         ));
-        // Remove from new conversations set
-        setNewConversationIds(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(activeConversation.id);
-          return newSet;
-        });
+        // Remove from new conversations set after a delay to ensure optimistic messages are complete
+        setTimeout(() => {
+          setNewConversationIds(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(activeConversation.id);
+            return newSet;
+          });
+        }, 1000); // Give enough time for streaming to complete
         return;
       }
       

@@ -259,20 +259,9 @@ export function ChatInput() {
               } else if (parsed.done && assistantMessageId) {
                 finalizeMessage(assistantMessageId, assistantContent);
                 
-                // For new conversations, set as active
-                if (!activeConversation && conversationId) {
-                  setTimeout(async () => {
-                    try {
-                      const conversationResponse = await fetch(`/api/conversations/${conversationId}`);
-                      if (conversationResponse.ok) {
-                        const conversationData = await conversationResponse.json();
-                        setActiveConversation(conversationData.conversation);
-                      }
-                    } catch (error) {
-                      console.error('Error setting active conversation:', error);
-                    }
-                  }, 100);
-                }
+                // Note: For new conversations, don't manually setActiveConversation
+                // The URL useEffect in ChatContext will handle it automatically
+                // This prevents the refresh that causes animation replay
               }
             } catch (e) {
               console.error('Error parsing streaming data:', e, 'Data:', data);
@@ -516,20 +505,9 @@ export function ChatInput() {
               } else if (parsed.type === 'consensus_final' && assistantMessageId) {
                 finalizeMessage(assistantMessageId, JSON.stringify(parsed.responses));
                 
-                // For new conversations, set as active
-                if (!activeConversation && conversationId) {
-                  setTimeout(async () => {
-                    try {
-                      const conversationResponse = await fetch(`/api/conversations/${conversationId}`);
-                      if (conversationResponse.ok) {
-                        const conversationData = await conversationResponse.json();
-                        setActiveConversation(conversationData.conversation);
-                      }
-                    } catch (error) {
-                      console.error('Error setting active conversation:', error);
-                    }
-                  }, 100);
-                }
+                // Note: For new conversations, don't manually setActiveConversation
+                // The URL useEffect in ChatContext will handle it automatically
+                // This prevents the refresh that causes animation replay
               }
             } catch (e) {
               console.error('Error parsing consensus streaming data:', e, 'Data:', data);
