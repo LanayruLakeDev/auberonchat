@@ -251,6 +251,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateConversationTitle = (conversationId: string, newTitle: string) => {
+    console.log('📝 UPDATE_TITLE: Updating title for conversation:', conversationId, 'New title:', newTitle);
     setConversations(prev => prev.map(conv => 
       conv.id === conversationId 
         ? { ...conv, title: newTitle }
@@ -261,6 +262,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (activeConversation?.id === conversationId) {
       setActiveConversation(prev => prev ? { ...prev, title: newTitle } : null);
     }
+    
+    // Remove from new conversations set when title is updated (indicates conversation is complete)
+    setNewConversationIds(prev => {
+      if (prev.has(conversationId)) {
+        console.log('📝 UPDATE_TITLE: Removing from new conversation set (title updated):', conversationId);
+        const newSet = new Set(prev);
+        newSet.delete(conversationId);
+        return newSet;
+      }
+      return prev;
+    });
   };
 
   const addNewConversation = (conversation: Conversation) => {
@@ -308,14 +320,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setMessages(filteredMessages);
         
         // Remove from new conversations set after a delay to ensure optimistic messages are complete
+        // Note: Usually removed earlier when title update happens
         setTimeout(() => {
-          console.log('⏰ ACTIVE_EFFECT: Removing from new conversation set:', activeConversation.id);
+          console.log('⏰ ACTIVE_EFFECT: Timeout cleanup - removing from new conversation set:', activeConversation.id);
           setNewConversationIds(prev => {
             const newSet = new Set(prev);
             newSet.delete(activeConversation.id);
             return newSet;
           });
-        }, 1000); // Give enough time for streaming to complete
+        }, 2000); // Fallback cleanup in case title update doesn't happen
         return;
       }
       
