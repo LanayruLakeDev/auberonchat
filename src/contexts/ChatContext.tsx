@@ -96,13 +96,34 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         const serverMessages = data.messages || [];
         
         setMessages(prev => {
-          // Keep only optimistic messages for this conversation that are actively streaming/loading
+          // Keep optimistic messages that are actively streaming/loading
           const activeOptimisticMessages = prev.filter(msg => 
             msg.isOptimistic && 
             msg.conversation_id === conversationId &&
             (msg.isStreaming || msg.isLoading)
           );
-          return [...serverMessages, ...activeOptimisticMessages];
+          
+          // Keep finalized optimistic messages to prevent animation replay
+          const finalizedOptimisticMessages = prev.filter(msg =>
+            msg.isOptimistic && 
+            msg.conversation_id === conversationId &&
+            !msg.isStreaming && 
+            !msg.isLoading &&
+            msg.content && 
+            msg.content.trim() !== ''
+          );
+          
+          // Only add server messages that don't have corresponding finalized optimistic messages
+          const newServerMessages = serverMessages.filter(serverMsg => {
+            return !finalizedOptimisticMessages.some(optMsg => {
+              // Check if content matches (indicating same message)
+              return optMsg.content === serverMsg.content && 
+                     optMsg.role === serverMsg.role &&
+                     Math.abs(new Date(optMsg.created_at).getTime() - new Date(serverMsg.created_at).getTime()) < 30000; // Within 30 seconds
+            });
+          });
+          
+          return [...newServerMessages, ...finalizedOptimisticMessages, ...activeOptimisticMessages];
         });
       }
     } catch (error) {

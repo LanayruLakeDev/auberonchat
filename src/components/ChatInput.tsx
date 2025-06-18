@@ -259,17 +259,6 @@ export function ChatInput() {
               } else if (parsed.done && assistantMessageId) {
                 finalizeMessage(assistantMessageId, assistantContent);
                 
-                // Refresh messages to sync with database and prevent visual glitches
-                if (conversationId) {
-                  setTimeout(async () => {
-                    try {
-                      await refreshMessages(conversationId!);
-                    } catch (error) {
-                      console.error('Error refreshing messages:', error);
-                    }
-                  }, 200);
-                }
-                
                 // For new conversations, set as active
                 if (!activeConversation && conversationId) {
                   setTimeout(async () => {
@@ -526,17 +515,6 @@ export function ChatInput() {
                 updateConversationTitle(parsed.conversationId, parsed.title);
               } else if (parsed.type === 'consensus_final' && assistantMessageId) {
                 finalizeMessage(assistantMessageId, JSON.stringify(parsed.responses));
-                
-                // Refresh messages to sync with database and prevent visual glitches
-                if (conversationId) {
-                  setTimeout(async () => {
-                    try {
-                      await refreshMessages(conversationId!);
-                    } catch (error) {
-                      console.error('Error refreshing messages:', error);
-                    }
-                  }, 200);
-                }
                 
                 // For new conversations, set as active
                 if (!activeConversation && conversationId) {
