@@ -184,11 +184,15 @@ export function ChatInput() {
         const conversationData = await createConversationResponse.json();
         conversationId = conversationData.conversation.id;
         
+        console.log('🆕 CHAT_INPUT: Created new conversation:', conversationId);
+        
         // Add the new conversation to the list but don't set it as active yet
         addNewConversation(conversationData.conversation);
         
+        console.log('🔗 CHAT_INPUT: Updating URL to:', `/chat/${conversationId}`);
         window.history.pushState(null, '', `/chat/${conversationId}`);
         
+        console.log('➕ CHAT_INPUT: Adding optimistic user message');
         userMessageId = addOptimisticMessage({
           conversation_id: conversationId!,
           role: 'user',
@@ -196,6 +200,7 @@ export function ChatInput() {
           attachments: messageAttachments,
         });
 
+        console.log('➕ CHAT_INPUT: Adding optimistic assistant message');
         assistantMessageId = addOptimisticMessage({
           conversation_id: conversationId!,
           role: 'assistant',
@@ -203,6 +208,7 @@ export function ChatInput() {
           isLoading: true,
         });
       }
+      console.log('🔄 CHAT_INPUT: Starting API call to /api/chat');
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -252,11 +258,14 @@ export function ChatInput() {
               } else if (parsed.error && assistantMessageId) {
                 // Handle error from API - show error message in chat
                 const errorContent = parsed.errorContent || `❌ **Error**: ${parsed.error}`;
+                console.log('❌ CHAT_INPUT: Error in streaming, finalizing with error');
                 finalizeMessage(assistantMessageId, errorContent);
               } else if (parsed.titleUpdate && parsed.conversationId && parsed.title) {
                 // Handle title update - update conversation title without switching chats
+                console.log('📝 CHAT_INPUT: Title update received:', parsed.title);
                 updateConversationTitle(parsed.conversationId, parsed.title);
               } else if (parsed.done && assistantMessageId) {
+                console.log('✅ CHAT_INPUT: Streaming DONE, finalizing message. ConversationID:', conversationId, 'ActiveConversation:', !!activeConversation);
                 finalizeMessage(assistantMessageId, assistantContent);
                 
                 // Note: For new conversations, don't manually setActiveConversation
