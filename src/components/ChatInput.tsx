@@ -263,7 +263,7 @@ export function ChatInput() {
                 if (conversationId) {
                   setTimeout(async () => {
                     try {
-                      await refreshMessages(conversationId);
+                      await refreshMessages(conversationId!);
                     } catch (error) {
                       console.error('Error refreshing messages:', error);
                     }
@@ -531,7 +531,7 @@ export function ChatInput() {
                 if (conversationId) {
                   setTimeout(async () => {
                     try {
-                      await refreshMessages(conversationId);
+                      await refreshMessages(conversationId!);
                     } catch (error) {
                       console.error('Error refreshing messages:', error);
                     }
