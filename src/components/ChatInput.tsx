@@ -259,11 +259,21 @@ export function ChatInput() {
               } else if (parsed.done && assistantMessageId) {
                 finalizeMessage(assistantMessageId, assistantContent);
                 
-                // For new conversations, just set as active without refreshing
+                // Refresh messages to sync with database and prevent visual glitches
+                if (conversationId) {
+                  setTimeout(async () => {
+                    try {
+                      await refreshMessages(conversationId);
+                    } catch (error) {
+                      console.error('Error refreshing messages:', error);
+                    }
+                  }, 200);
+                }
+                
+                // For new conversations, set as active
                 if (!activeConversation && conversationId) {
                   setTimeout(async () => {
                     try {
-                      // Set the conversation as active but don't refresh messages
                       const conversationResponse = await fetch(`/api/conversations/${conversationId}`);
                       if (conversationResponse.ok) {
                         const conversationData = await conversationResponse.json();
@@ -517,11 +527,21 @@ export function ChatInput() {
               } else if (parsed.type === 'consensus_final' && assistantMessageId) {
                 finalizeMessage(assistantMessageId, JSON.stringify(parsed.responses));
                 
-                // For new conversations, just set as active without refreshing
+                // Refresh messages to sync with database and prevent visual glitches
+                if (conversationId) {
+                  setTimeout(async () => {
+                    try {
+                      await refreshMessages(conversationId);
+                    } catch (error) {
+                      console.error('Error refreshing messages:', error);
+                    }
+                  }, 200);
+                }
+                
+                // For new conversations, set as active
                 if (!activeConversation && conversationId) {
                   setTimeout(async () => {
                     try {
-                      // Set the conversation as active but don't refresh messages
                       const conversationResponse = await fetch(`/api/conversations/${conversationId}`);
                       if (conversationResponse.ok) {
                         const conversationData = await conversationResponse.json();
