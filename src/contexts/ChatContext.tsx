@@ -113,7 +113,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           );
           
           // Only add server messages that don't have corresponding finalized optimistic messages
-          const newServerMessages = serverMessages.filter(serverMsg => {
+          const newServerMessages = serverMessages.filter((serverMsg: Message) => {
             return !finalizedOptimisticMessages.some(optMsg => {
               // Check if content matches (indicating same message)
               return optMsg.content === serverMsg.content && 
