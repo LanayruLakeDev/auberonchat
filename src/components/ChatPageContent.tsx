@@ -21,21 +21,9 @@ export function ChatPageContent({ chatId }: ChatPageContentProps) {
   
   useDynamicTitle(activeConversation);
 
-  useEffect(() => {
-    if (!isLoading && conversations.length > 0) {
-      if (chatId) {
-        const conversation = conversations.find(conv => conv.id === chatId);
-        if (conversation) {
-          setActiveConversation(conversation);
-        } else {
-          window.history.replaceState(null, '', '/chat');
-          setActiveConversation(null);
-        }
-      } else {
-        setActiveConversation(null);
-      }
-    }
-  }, [conversations, chatId, isLoading, setActiveConversation]);
+  // NOTE: activeConversation management is now handled in ChatContext
+  // This useEffect was removed to prevent conflicts with the ChatContext URL effect
+  // The ChatContext properly handles conversation switching based on URL changes
 
   useEffect(() => {
     if (!isLoading && profile && !profile.openrouter_api_key) {
