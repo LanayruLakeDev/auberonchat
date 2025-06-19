@@ -8,6 +8,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingIndicator } from './LoadingIndicator';
 import { TypeWriter } from './TypeWriter';
 import { ConsensusMessage } from './ConsensusMessage';
+import { LordIcon } from './LordIcon';
 import { ScrollToBottomButton } from './ScrollToBottomButton';
 import { ConsensusResponse } from '@/types/chat';
 
@@ -179,7 +180,7 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
         <div className="text-center max-w-md">
           <div className="w-20 h-20 mx-auto mb-6 glass-strong rounded-3xl flex items-center justify-center relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20"></div>
-            <lord-icon
+            <LordIcon
               src="https://cdn.lordicon.com/sswuvtso.json"
               trigger="loop-on-hover"
               delay="2000"
@@ -272,7 +273,7 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
                     
                     // Fallback to AI icon for assistant messages
                     return (
-                      <lord-icon
+                      <LordIcon
                         src="https://cdn.lordicon.com/sswuvtso.json"
                         trigger="hover"
                         stroke="bold"
