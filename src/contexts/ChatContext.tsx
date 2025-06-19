@@ -77,12 +77,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       
       // Only set active conversation if:
       // 1. We found a conversation with the URL ID
-      // 2. It's different from the current active conversation
-      if (conversation && (!activeConversation || activeConversation.id !== conversation.id)) {
+      // 2. The current active conversation ID is different (compare IDs, not objects)
+      if (conversation && activeConversation?.id !== chatId) {
         console.log('✅ URL_EFFECT: Setting active conversation to:', conversation.id);
         setActiveConversation(conversation);
       } else {
-        console.log('⏸️ URL_EFFECT: Not setting active conversation');
+        console.log('⏸️ URL_EFFECT: Not setting active conversation - same ID or no conversation found');
+      }
+    } else if (!chatIdMatch || !chatIdMatch[1]) {
+      // Only clear active conversation if we're not on a chat page
+      console.log('⏸️ URL_EFFECT: Not on chat page, clearing active conversation');
+      if (activeConversation) {
+        setActiveConversation(null);
       }
     } else {
       console.log('⏸️ URL_EFFECT: No matching conversation or empty list');
