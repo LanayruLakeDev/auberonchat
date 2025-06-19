@@ -14,8 +14,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Convex Chat - t3-cloneathon",
-  description: "A t3.chat clone, submission for the t3-cloneathon",
+  title: "Auberon Chat - Advanced AI with Consensus Intelligence",
+  description: "Revolutionary AI chat platform featuring multi-model consensus, advanced deep thinking capabilities, and intelligent file processing across 20+ cutting-edge AI models.",
+  keywords: "AI chat, consensus mode, multi-model AI, artificial intelligence, deep thinking, GPT, Claude, Gemini",
+  openGraph: {
+    title: "Auberon Chat - Advanced AI with Consensus Intelligence",
+    description: "Revolutionary AI chat platform featuring multi-model consensus, advanced deep thinking capabilities, and intelligent file processing across 20+ cutting-edge AI models.",
+    type: "website",
+    siteName: "Auberon Chat",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Auberon Chat - Advanced AI with Consensus Intelligence",
+    description: "Revolutionary AI chat platform featuring multi-model consensus, advanced deep thinking capabilities, and intelligent file processing across 20+ cutting-edge AI models.",
+  },
 };
 
 export default function RootLayout({

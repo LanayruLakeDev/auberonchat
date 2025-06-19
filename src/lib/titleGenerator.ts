@@ -15,7 +15,7 @@ export class TitleGenerator {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-          'X-Title': 'Convex Chat Title Generator',
+          'X-Title': 'Auberon Chat Title Generator',
         },
         body: JSON.stringify({
           model: 'google/gemini-2.0-flash-lite-001', // Fast and cheap model for title generation

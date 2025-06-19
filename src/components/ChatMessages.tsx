@@ -187,7 +187,7 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
           </div>
           
           <h3 className="text-2xl font-bold text-white mb-4">
-            Welcome to Convex Chat
+            Welcome to Auberon Chat
           </h3>
           
           <p className="text-white/60 leading-relaxed">

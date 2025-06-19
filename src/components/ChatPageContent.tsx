@@ -85,7 +85,7 @@ export function ChatPageContent({ chatId }: ChatPageContentProps) {
             transition={{ delay: 0.2 }}
             className="text-2xl font-bold text-white mb-4"
           >
-            Welcome to Convex Chat
+            Welcome to Auberon Chat
           </motion.h1>
           
           <motion.p
