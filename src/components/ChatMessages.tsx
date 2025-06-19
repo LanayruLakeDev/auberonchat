@@ -179,9 +179,9 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center max-w-md">
           <div className="w-20 h-20 mx-auto mb-6 glass-strong rounded-3xl flex items-center justify-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/25 to-blue-500/25"></div>
             <LordIcon
-              src="https://cdn.lordicon.com/sswuvtso.json"
+              src="https://cdn.lordicon.com/fdxqrdfe.json"
               trigger="loop"
               delay="2000"
               stroke="bold"
@@ -274,7 +274,7 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
                     // Fallback to AI icon for assistant messages
                     return (
                       <LordIcon
-                        src="https://cdn.lordicon.com/sswuvtso.json"
+                        src="https://cdn.lordicon.com/fdxqrdfe.json"
                         trigger="loop"
                         stroke="bold"
                         style={{width: '16px', height: '16px'}}
