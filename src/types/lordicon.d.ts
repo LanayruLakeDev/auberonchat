@@ -8,6 +8,7 @@ declare global {
           stroke?: string;
           style?: React.CSSProperties;
           loop?: boolean;
+          colors?: string;
         },
         HTMLElement
       >;

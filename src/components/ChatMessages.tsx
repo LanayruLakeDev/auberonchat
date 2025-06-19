@@ -185,6 +185,7 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
               trigger="loop"
               delay="2000"
               stroke="bold"
+              colors="primary:#8b5cf6,secondary:#60a5fa"
               style={{width: '56px', height: '56px', position: 'relative', zIndex: 10}}
             />
           </div>
@@ -277,6 +278,7 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
                         src="https://cdn.lordicon.com/sswuvtso.json"
                         trigger="loop"
                         stroke="bold"
+                        colors="primary:#8b5cf6,secondary:#60a5fa"
                         style={{width: '16px', height: '16px'}}
                       />
                     );

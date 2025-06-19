@@ -8,6 +8,7 @@ interface LordIconProps {
   style?: React.CSSProperties;
   className?: string;
   loop?: boolean;
+  colors?: string;
 }
 
 export const LordIcon: React.FC<LordIconProps> = ({ 
@@ -17,7 +18,8 @@ export const LordIcon: React.FC<LordIconProps> = ({
   stroke, 
   style, 
   className,
-  loop 
+  loop,
+  colors 
 }) => {
   return React.createElement('lord-icon', {
     src,
@@ -26,6 +28,7 @@ export const LordIcon: React.FC<LordIconProps> = ({
     stroke,
     style,
     className,
-    loop
+    loop,
+    colors
   });
 };
