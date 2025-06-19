@@ -7,6 +7,7 @@ interface LordIconProps {
   stroke?: string;
   style?: React.CSSProperties;
   className?: string;
+  loop?: boolean;
 }
 
 export const LordIcon: React.FC<LordIconProps> = ({ 
@@ -15,7 +16,8 @@ export const LordIcon: React.FC<LordIconProps> = ({
   delay, 
   stroke, 
   style, 
-  className 
+  className,
+  loop 
 }) => {
   return React.createElement('lord-icon', {
     src,
@@ -23,6 +25,7 @@ export const LordIcon: React.FC<LordIconProps> = ({
     delay,
     stroke,
     style,
-    className
+    className,
+    loop
   });
 };

@@ -182,7 +182,7 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20"></div>
             <LordIcon
               src="https://cdn.lordicon.com/sswuvtso.json"
-              trigger="loop-on-hover"
+              trigger="loop"
               delay="2000"
               stroke="bold"
               style={{width: '56px', height: '56px', position: 'relative', zIndex: 10}}
@@ -275,7 +275,7 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
                     return (
                       <LordIcon
                         src="https://cdn.lordicon.com/sswuvtso.json"
-                        trigger="hover"
+                        trigger="loop"
                         stroke="bold"
                         style={{width: '16px', height: '16px'}}
                       />
