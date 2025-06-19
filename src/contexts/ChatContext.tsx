@@ -60,6 +60,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     console.log('🔄 URL_EFFECT: Pathname changed:', window.location.pathname);
+    console.log('🔄 URL_EFFECT: Conversations count:', conversations.length);
+    console.log('🔄 URL_EFFECT: Active conversation before:', activeConversation?.id);
+    
     const pathname = window.location.pathname;
     const chatIdMatch = pathname.match(/^\/chat\/(.+)$/);
     
@@ -84,7 +87,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     } else {
       console.log('⏸️ URL_EFFECT: No matching conversation or empty list');
     }
-  }, [conversations, activeConversation]);
+  }, [conversations]);
 
   const refreshConversations = async () => {
     try {
@@ -258,10 +261,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         : conv
     ));
     
-    // Also update active conversation if it's the one being updated
-    if (activeConversation?.id === conversationId) {
-      setActiveConversation(prev => prev ? { ...prev, title: newTitle } : null);
-    }
+    // DON'T update activeConversation here - it causes unnecessary re-renders
+    // The title will be updated when the user navigates or refreshes
+    // This prevents the race condition that causes messages to clear
     
     // Remove from new conversations set when title is updated (indicates conversation is complete)
     setNewConversationIds(prev => {
