@@ -179,10 +179,12 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
         <div className="text-center max-w-md">
           <div className="w-20 h-20 mx-auto mb-6 glass-strong rounded-3xl flex items-center justify-center relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20"></div>
-            <img 
-              src="/ai.png" 
-              alt="AI Assistant" 
-              className="w-14 h-14 object-contain relative z-10"
+            <lord-icon
+              src="https://cdn.lordicon.com/sswuvtso.json"
+              trigger="loop-on-hover"
+              delay="2000"
+              stroke="bold"
+              style={{width: '56px', height: '56px', position: 'relative', zIndex: 10}}
             />
           </div>
           
@@ -268,8 +270,15 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
                       );
                     }
                     
-                    // Fallback to AI image for assistant messages
-                    return <img src="/ai.png" alt="AI Assistant" className="w-4 h-4 object-contain" />;
+                    // Fallback to AI icon for assistant messages
+                    return (
+                      <lord-icon
+                        src="https://cdn.lordicon.com/sswuvtso.json"
+                        trigger="hover"
+                        stroke="bold"
+                        style={{width: '16px', height: '16px'}}
+                      />
+                    );
                   })()
                 )}
               </div>

@@ -37,6 +37,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <script src="https://cdn.lordicon.com/lordicon.js"></script>
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black min-h-screen`}
       >
