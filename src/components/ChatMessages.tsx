@@ -194,8 +194,8 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
           </h3>
           
           <p className="text-white/60 leading-relaxed">
-            Start a new conversation to chat with various AI models through OpenRouter.
-            Choose your preferred model and begin chatting!
+            Start a new conversation with multiple AI models. Use consensus mode to get 
+            responses from several models at once, or choose your preferred model and begin chatting!
           </p>
 
           <div className="flex items-center justify-center gap-2 mt-6 text-sm text-white/40">
