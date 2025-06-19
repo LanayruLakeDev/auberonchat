@@ -173,21 +173,21 @@ function SettingsSidebar({ activeSection, onSectionChange, isCollapsed, onToggle
               <div className="pt-2 border-t border-white/5 space-y-3">
                 <div className="flex justify-center gap-3 text-xs text-white/30">
                   <a 
-                    href="/nutzungsbedingungen" 
+                    href="/terms" 
                     className="hover:text-white/50 transition-colors"
                   >
                     Terms
                   </a>
                   <span>•</span>
                   <a 
-                    href="/datenschutz-chat" 
+                    href="/privacy" 
                     className="hover:text-white/50 transition-colors"
                   >
                     Privacy
                   </a>
                   <span>•</span>
                   <a 
-                    href="/haftungsausschluss" 
+                    href="/disclaimer" 
                     className="hover:text-white/50 transition-colors"
                   >
                     Disclaimer
@@ -200,7 +200,7 @@ function SettingsSidebar({ activeSection, onSectionChange, isCollapsed, onToggle
                   transition={{ delay: 0.3 }}
                 >
                   <motion.a
-                    href="https://github.com/lulkebit/t3-cloneathon"
+                    href="https://github.com/LanayruLakeDev/auberonchat"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-2 py-1.5 text-white/30 hover:text-white/60 transition-all duration-200 hover:bg-white/5 rounded-md text-xs"

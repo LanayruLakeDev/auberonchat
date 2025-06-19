@@ -1,8 +1,8 @@
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-[var(--bg-primary)] via-[var(--bg-secondary)] to-[var(--bg-tertiary)] text-white">
       <div className="container mx-auto px-4 py-16 max-w-4xl">
-        <h1 className="text-4xl font-bold mb-8 text-center bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+        <h1 className="text-4xl font-bold mb-8 text-center bg-gradient-to-r from-[var(--accent)] to-blue-400 bg-clip-text text-transparent">
           Privacy Policy - Chat Application
         </h1>
         
@@ -10,8 +10,8 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-2xl font-semibold mb-4 text-purple-300">Supplement to Main Privacy Policy</h2>
             <p className="text-gray-300 leading-relaxed">
-              This privacy policy supplements the general privacy policy of lukeschroeter.de 
-              with specific information about data processing in the chat application.
+              This privacy policy provides comprehensive information about data processing 
+              in the Auberon Chat application and complies with EU data protection regulations.
             </p>
           </section>
 
@@ -154,8 +154,8 @@ export default function PrivacyPolicy() {
             </p>
             <div className="mt-3 p-4 bg-gray-800 rounded-lg">
               <p className="text-gray-300">
-                <strong>Luke Schröter</strong><br />
-                Email: lukeschroeter05@gmail.com<br />
+                <strong>Auberon Chat Support</strong><br />
+                Email: Hi@auberon.chat<br />
                 Subject: "Chat Application Privacy"
               </p>
             </div>
@@ -164,7 +164,7 @@ export default function PrivacyPolicy() {
           <div className="mt-8 pt-6 border-t border-gray-600">
             <p className="text-sm text-gray-400">
               Last updated: June 2025<br />
-              This privacy policy supplements the general privacy policy of lukeschroeter.de
+              This privacy policy complies with EU data protection regulations including GDPR
             </p>
           </div>
         </div>

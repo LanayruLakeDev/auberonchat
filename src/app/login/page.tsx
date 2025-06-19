@@ -28,7 +28,7 @@ export default function LoginPage() {
     try {
       // Sign in as a shared guest account
       const { error } = await supabase.auth.signInWithPassword({
-        email: 'guest@auberonchat.com',
+        email: 'guest@auberon.chat',
         password: 'guestuser123456',
       })
       
@@ -417,7 +417,7 @@ export default function LoginPage() {
                 className="flex justify-center"
               >
               <motion.a
-                href="https://github.com/lulkebit/t3-cloneathon"
+                href="https://github.com/LanayruLakeDev/auberonchat"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-3 py-2 text-white/40 hover:text-white/70 transition-all duration-200 hover:bg-white/5 rounded-lg"
