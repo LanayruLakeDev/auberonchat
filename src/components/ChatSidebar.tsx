@@ -1,11 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
-
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from '@/contexts/ChatContext';
-import { Plus, MessageSquare, Trash2, Settings, ChevronLeft, ChevronRight, X, Check, Users } from 'lucide-react';
+import { SettingsModal } from '@/components/SettingsModal';
+import { Plus, MessageSquare, Trash2, Settings, ChevronLeft, ChevronRight, X, Check, Users, Loader2 } from 'lucide-react';
 
 interface ChatSidebarProps {
   isCollapsed: boolean;
@@ -20,10 +19,12 @@ export function ChatSidebar({ isCollapsed, onToggleCollapse }: ChatSidebarProps)
     createNewConversation,
     deleteConversation,
     isLoading,
+    isLoadingConversations,
   } = useChat();
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   const handleDeleteClick = (e: React.MouseEvent, conversationId: string) => {
     e.stopPropagation();
@@ -197,7 +198,48 @@ export function ChatSidebar({ isCollapsed, onToggleCollapse }: ChatSidebarProps)
                   transition={{ delay: 0.4 }}
                 >
                   <AnimatePresence mode="popLayout">
-                    {conversations.length === 0 ? (
+                    {isLoadingConversations ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ delay: 0.2 }}
+                        className="text-center py-8"
+                      >
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 0.3, type: "spring" }}
+                          className="flex flex-col items-center gap-3"
+                        >
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                            className="text-blue-400"
+                          >
+                            <Loader2 size={24} />
+                          </motion.div>
+                          <div className="text-center">
+                            <motion.p 
+                              className="text-white/70 text-sm font-medium"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 0.4 }}
+                            >
+                              Loading conversations...
+                            </motion.p>
+                            <motion.p 
+                              className="text-white/40 text-xs mt-1"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 0.6 }}
+                            >
+                              Fetching your chat history
+                            </motion.p>
+                          </div>
+                        </motion.div>
+                      </motion.div>
+                    ) : conversations.length === 0 ? (
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -380,25 +422,29 @@ export function ChatSidebar({ isCollapsed, onToggleCollapse }: ChatSidebarProps)
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
                 >
-                  <Link href="/settings">
-                    <motion.div
-                      className="w-full flex items-center gap-2 text-white/50 hover:text-white/80 px-2 py-2 rounded-md hover:bg-white/5 transition-colors text-xs"
-                      whileHover={{ scale: 1.02, x: 4 }}
-                      whileTap={{ scale: 0.98 }}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.6 }}
-                    >
-                      <Settings size={14} />
-                      Settings
-                    </motion.div>
-                  </Link>
+                  <motion.button
+                    onClick={() => setShowSettings(true)}
+                    className="w-full flex items-center gap-2 text-white/50 hover:text-white/80 px-2 py-2 rounded-md hover:bg-white/5 transition-colors text-xs"
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.6 }}
+                  >
+                    <Settings size={14} />
+                    Settings
+                  </motion.button>
                 </motion.div>
               </>
             )}
           </motion.div>
         )}
       </AnimatePresence>
+
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </>
   );
 } 

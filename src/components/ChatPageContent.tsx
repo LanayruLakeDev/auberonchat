@@ -26,9 +26,18 @@ export function ChatPageContent({ chatId }: ChatPageContentProps) {
   // The ChatContext properly handles conversation switching based on URL changes
 
   useEffect(() => {
-    // Only require API key for non-guest users
-    if (!isLoading && profile && !profile.openrouter_api_key && !user?.is_guest) {
-      setShowSettings(true);
+    if (!isLoading) {
+      // For authenticated users - require API key
+      if (profile && !profile.openrouter_api_key && !user?.is_guest) {
+        setShowSettings(true);
+      }
+      // For guest users - prompt for API key if not in localStorage
+      else if (user?.is_guest) {
+        const guestApiKey = localStorage.getItem('guest_openrouter_api_key');
+        if (!guestApiKey) {
+          setShowSettings(true);
+        }
+      }
     }
   }, [profile, isLoading, user]);
 

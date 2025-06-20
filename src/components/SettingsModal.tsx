@@ -199,18 +199,66 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
               </motion.div>
 
-              {profile && (
+              {user?.is_guest ? (
+                // Guest Status Section
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
                   className="glass rounded-2xl p-4 border border-white/10"
                 >
-                  <h4 className="font-medium text-white mb-3">Current Status</h4>
+                  <h4 className="font-medium text-white mb-3">Guest Mode</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60">Status:</span>
+                      <span className="text-orange-400 font-medium">Guest User</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60">API Key:</span>
+                      {apiKey ? (
+                        <span className="font-mono text-green-400">
+                          {showApiKey ? apiKey : maskApiKey(apiKey)}
+                        </span>
+                      ) : (
+                        <span className="text-red-400">Not configured</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60">Data Storage:</span>
+                      <span className="text-blue-400">Local Device</span>
+                    </div>
+                  </div>
+                  
+                  <motion.button
+                    onClick={() => window.open('/login', '_blank')}
+                    className="w-full mt-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-medium py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Shield size={16} />
+                    Upgrade to Premium
+                  </motion.button>
+                </motion.div>
+              ) : profile ? (
+                // Authenticated User Status Section
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="glass rounded-2xl p-4 border border-white/10"
+                >
+                  <h4 className="font-medium text-white mb-3">Account Status</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-white/60">Email:</span>
                       <span className="font-mono text-white/80">{profile.email}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60">Status:</span>
+                      <span className="text-green-400 font-medium flex items-center gap-1">
+                        <Shield size={14} />
+                        Premium Active
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-white/60">API Key:</span>
@@ -222,9 +270,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         <span className="text-red-400">Not configured</span>
                       )}
                     </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60">Data Storage:</span>
+                      <span className="text-green-400">Cloud Synced</span>
+                    </div>
                   </div>
                 </motion.div>
-              )}
+              ) : null}
             </motion.div>
 
             <motion.div

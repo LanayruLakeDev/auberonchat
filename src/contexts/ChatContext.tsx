@@ -12,6 +12,7 @@ interface ChatContextType {
   profile: Profile | null;
   user: any | null;
   isLoading: boolean;
+  isLoadingConversations: boolean;
   setActiveConversation: (conversation: Conversation | null) => void;
   refreshConversations: () => Promise<void>;
   refreshMessages: (conversationId: string) => Promise<void>;
@@ -36,6 +37,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [user, setUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
   const [newConversationIds, setNewConversationIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -94,8 +96,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     } else {
       console.log('⏸️ URL_EFFECT: No matching conversation or empty list');
     }
-  }, [conversations]);
-  const refreshConversations = async () => {    try {
+  }, [conversations]);  const refreshConversations = async () => {    try {
+      setIsLoadingConversations(true);
+      
       // First check if we have an authenticated user
       if (user && !user.is_guest) {
         // Regular authenticated user - fetch from API
@@ -124,6 +127,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Error fetching conversations:', error);
+    } finally {
+      setIsLoadingConversations(false);
     }
   };
   const refreshMessages = async (conversationId: string) => {
@@ -449,14 +454,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, [activeConversation]); // Don't include messages as dependency to avoid loops
 
   return (
-    <ChatContext.Provider
-      value={{
+    <ChatContext.Provider      value={{
         conversations,
         activeConversation,
         messages,
         profile,
         user,
         isLoading,
+        isLoadingConversations,
         setActiveConversation,
         refreshConversations,
         refreshMessages,

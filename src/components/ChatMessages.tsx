@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from '@/contexts/ChatContext';
-import { User, Sparkles, Copy, Check, RotateCcw, Loader2, FileImage, FileText, Download, Users } from 'lucide-react';
+import { User, Sparkles, Copy, Check, RotateCcw, Loader2, FileImage, FileText, Download, Users, Key } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingIndicator } from './LoadingIndicator';
 import { TypeWriter } from './TypeWriter';
@@ -175,6 +175,9 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
   }
 
   if (!activeConversation && messages.length === 0) {
+    // Check if guest user without API key
+    const isGuestWithoutApiKey = user?.is_guest && !localStorage.getItem('guest_openrouter_api_key');
+    
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center max-w-md">
@@ -190,19 +193,49 @@ export function ChatMessages({ isSidebarCollapsed }: ChatMessagesProps) {
             />
           </div>
           
-          <h3 className="text-2xl font-bold text-white mb-4">
-            Welcome to Auberon Chat
-          </h3>
-          
-          <p className="text-white/60 leading-relaxed">
-            Start a new conversation with multiple AI models. Use consensus mode to get 
-            responses from several models at once, or choose your preferred model and begin chatting!
-          </p>
+          {isGuestWithoutApiKey ? (
+            <>
+              <h3 className="text-2xl font-bold text-white mb-4">
+                Welcome to Auberon Chat
+              </h3>
+              
+              <p className="text-white/60 leading-relaxed mb-6">
+                To start chatting with AI models, you'll need to add your OpenRouter API key. 
+                Your conversations will be saved locally on your device.
+              </p>
 
-          <div className="flex items-center justify-center gap-2 mt-6 text-sm text-white/40">
-            <Sparkles size={16} />
-            <span>Press Enter to send, Shift+Enter for new line</span>
-          </div>
+              <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <Key size={16} className="text-amber-400" />
+                  <span className="text-amber-400 font-medium text-sm">API Key Required</span>
+                </div>
+                <p className="text-white/70 text-sm">
+                  Click the settings button in the sidebar to add your OpenRouter API key and start chatting!
+                </p>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 text-sm text-white/40">
+                <Sparkles size={16} />
+                <span>Add your API key to unlock all features</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 className="text-2xl font-bold text-white mb-4">
+                Welcome to Auberon Chat
+              </h3>
+              
+              <p className="text-white/60 leading-relaxed">
+                Start a new conversation with multiple AI models. Use consensus mode to get 
+                responses from several models at once, or choose your preferred model and begin chatting!
+              </p>
+
+              <div className="flex items-center justify-center gap-2 mt-6 text-sm text-white/40">
+                <Sparkles size={16} />
+                <span>Press Enter to send, Shift+Enter for new line</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
