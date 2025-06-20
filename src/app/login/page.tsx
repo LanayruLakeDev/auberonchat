@@ -31,16 +31,25 @@ export default function LoginPage() {
   const handleGuestNameSubmit = async (displayName: string) => {
     setLoading(true)
     setError('')
+    setShowGuestPrompt(false) // Close the prompt
 
     try {
+      console.log('Creating guest user with name:', displayName)
+      
       // Create guest user in localStorage
       const guestUser = createGuestUser(displayName)
+      console.log('Created guest user:', guestUser)
+      
       LocalStorage.setUser(guestUser)
+      console.log('Saved guest user to localStorage')
       
       // Redirect to chat
+      console.log('Redirecting to /chat')
       router.push('/chat')
     } catch (err) {
+      console.error('Error in guest login:', err)
       setError('An unexpected error occurred')
+      setShowGuestPrompt(true) // Show prompt again on error
     } finally {
       setLoading(false)
     }
@@ -274,18 +283,21 @@ export default function LoginPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
             >
-              <label className="block text-sm font-medium text-white/80 mb-2">
+              <label htmlFor="email-address" className="block text-sm font-medium text-white/80 mb-2">
                 Email Address
               </label>
                              <div className="relative">
                  <Mail size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40" />
                  <input
+                   id="email-address"
+                   name="email"
                    type="email"
                    value={email}
                    onChange={(e) => setEmail(e.target.value)}
                    required
                    className="w-full !pl-11 pr-4 py-3 input-glass text-white placeholder:text-white/40"
                    placeholder="your@email.com"
+                   autoComplete="email"
                  />
                </div>
             </motion.div>
@@ -295,18 +307,21 @@ export default function LoginPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.9 }}
             >
-              <label className="block text-sm font-medium text-white/80 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-white/80 mb-2">
                 Password
               </label>
                              <div className="relative">
                  <Lock size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40" />
                  <input
+                   id="password"
+                   name="password"
                    type={showPassword ? 'text' : 'password'}
                    value={password}
                    onChange={(e) => setPassword(e.target.value)}
                    required
                    className="w-full !pl-11 !pr-12 py-3 input-glass text-white placeholder:text-white/40"
                    placeholder="••••••••"
+                   autoComplete={isLogin ? "current-password" : "new-password"}
                  />
                  <button
                    type="button"
@@ -324,18 +339,21 @@ export default function LoginPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.0 }}
               >
-                <label className="block text-sm font-medium text-white/80 mb-2">
+                <label htmlFor="confirm-password" className="block text-sm font-medium text-white/80 mb-2">
                   Confirm Password
                 </label>
                                  <div className="relative">
                    <Lock size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40" />
                    <input
+                     id="confirm-password"
+                     name="confirmPassword"
                      type={showConfirmPassword ? 'text' : 'password'}
                      value={confirmPassword}
                      onChange={(e) => setConfirmPassword(e.target.value)}
                      required
                      className="w-full !pl-11 !pr-12 py-3 input-glass text-white placeholder:text-white/40"
                      placeholder="••••••••"
+                     autoComplete="new-password"
                    />
                    <button
                      type="button"

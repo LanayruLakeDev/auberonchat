@@ -39,7 +39,10 @@ export async function middleware(request: NextRequest) {
     '/auth/auth-code-error',
     '/nutzungsbedingungen',
     '/datenschutz-chat',
-    '/haftungsausschluss'
+    '/haftungsausschluss',
+    '/terms',
+    '/privacy', 
+    '/disclaimer'
   ]
   
   const isPublicRoute = publicRoutes.some(route => 
@@ -53,6 +56,12 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!user && !isPublicRoute) {
+    // Allow access to chat routes for potential guest users
+    // Guest user verification will happen client-side in the ChatContext
+    if (request.nextUrl.pathname.startsWith('/chat')) {
+      return supabaseResponse
+    }
+    
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

@@ -94,13 +94,14 @@ export const GuestNamePrompt: React.FC<GuestNamePromptProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-            >
-              <label className="block text-sm font-medium text-white/80 mb-2">
+            >              <label htmlFor="guest-display-name" className="block text-sm font-medium text-white/80 mb-2">
                 Display Name
               </label>
               <div className="relative">
                 <User size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40" />
                 <input
+                  id="guest-display-name"
+                  name="displayName"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -109,6 +110,7 @@ export const GuestNamePrompt: React.FC<GuestNamePromptProps> = ({
                   className="w-full !pl-11 pr-4 py-3 input-glass text-white placeholder:text-white/40 disabled:opacity-50"
                   placeholder="Enter your name (e.g., John, Sarah, Alex)"
                   maxLength={50}
+                  autoComplete="given-name"
                 />
               </div>
               <p className="text-xs text-white/40 mt-2">

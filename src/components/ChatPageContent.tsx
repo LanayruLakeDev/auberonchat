@@ -15,7 +15,7 @@ interface ChatPageContentProps {
 }
 
 export function ChatPageContent({ chatId }: ChatPageContentProps) {
-  const { profile, isLoading, conversations, setActiveConversation, activeConversation } = useChat();
+  const { profile, isLoading, conversations, setActiveConversation, activeConversation, user } = useChat();
   const [showSettings, setShowSettings] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
@@ -26,10 +26,11 @@ export function ChatPageContent({ chatId }: ChatPageContentProps) {
   // The ChatContext properly handles conversation switching based on URL changes
 
   useEffect(() => {
-    if (!isLoading && profile && !profile.openrouter_api_key) {
+    // Only require API key for non-guest users
+    if (!isLoading && profile && !profile.openrouter_api_key && !user?.is_guest) {
       setShowSettings(true);
     }
-  }, [profile, isLoading]);
+  }, [profile, isLoading, user]);
 
   if (isLoading) {
     return (
