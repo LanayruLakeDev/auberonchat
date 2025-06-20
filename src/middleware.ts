@@ -14,12 +14,12 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet: any) {
-          cookiesToSet.forEach(({ name, value }: any) => request.cookies.set(name, value))
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request,
           })
-          cookiesToSet.forEach(({ name, value, options }: any) =>
+          cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
         },
@@ -39,10 +39,7 @@ export async function middleware(request: NextRequest) {
     '/auth/auth-code-error',
     '/nutzungsbedingungen',
     '/datenschutz-chat',
-    '/haftungsausschluss',
-    '/terms',
-    '/privacy', 
-    '/disclaimer'
+    '/haftungsausschluss'
   ]
   
   const isPublicRoute = publicRoutes.some(route => 
@@ -56,18 +53,20 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!user && !isPublicRoute) {
-    // Allow access to chat routes for potential guest users
-    // Guest user verification will happen client-side in the ChatContext
-    if (request.nextUrl.pathname.startsWith('/chat')) {
-      return supabaseResponse
-    }
-    
+    // Redirect to /chat instead of /login - guests will be handled there
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = '/chat'
     return NextResponse.redirect(url)
   }
 
   if (user && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname === '/')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/chat'
+    return NextResponse.redirect(url)
+  }
+
+  // Redirect root to chat
+  if (request.nextUrl.pathname === '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/chat'
     return NextResponse.redirect(url)

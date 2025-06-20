@@ -29,9 +29,30 @@ export const LocalStorage = {
     const userData = localStorage.getItem(STORAGE_KEYS.USER);
     return userData ? JSON.parse(userData) : null;
   },
-
   clearUser: (): void => {
     localStorage.removeItem(STORAGE_KEYS.USER);
+  },
+
+  createGuestUser: (): LocalUser => {
+    const guestUser = {
+      id: generateId(),
+      display_name: 'Guest User',
+      is_guest: true,
+      is_premium: false,
+      created_at: new Date().toISOString()
+    };
+    LocalStorage.setUser(guestUser);
+    return guestUser;
+  },
+
+  clearGuestData: (): void => {
+    const user = LocalStorage.getUser();
+    if (user?.is_guest) {
+      localStorage.removeItem(STORAGE_KEYS.USER);
+      localStorage.removeItem(STORAGE_KEYS.CONVERSATIONS);
+      localStorage.removeItem(STORAGE_KEYS.MESSAGES);
+      localStorage.removeItem(STORAGE_KEYS.PROFILE);
+    }
   },
 
   // Conversation operations

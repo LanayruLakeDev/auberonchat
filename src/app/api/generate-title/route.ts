@@ -4,66 +4,40 @@ import { TitleGenerator } from '@/lib/titleGenerator';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userMessage, assistantResponse, conversationId, isGuest } = await request.json();
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (!userMessage) {
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { userMessage, assistantResponse, conversationId } = await request.json();
+
+    if (!userMessage || !conversationId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    let apiKey: string;
+    // Get user's OpenRouter API key
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('openrouter_api_key')
+      .eq('id', user.id)
+      .single();
 
-    // Handle guest users
-    if (isGuest) {
-      const guestApiKey = request.headers.get('X-Guest-API-Key');
-      if (!guestApiKey) {
-        return NextResponse.json({ error: 'Guest API key required' }, { status: 400 });
-      }
-      apiKey = guestApiKey;
-    } else {
-      // Handle regular authenticated users
-      const supabase = await createClient();
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-
-      if (!conversationId) {
-        return NextResponse.json({ error: 'Conversation ID required for authenticated users' }, { status: 400 });
-      }
-
-      // Get user's OpenRouter API key
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('openrouter_api_key')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.openrouter_api_key) {
-        return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
-      }
-
-      apiKey = profile.openrouter_api_key;
+    if (!profile?.openrouter_api_key) {
+      return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
     }
 
     // Generate the title
-    const titleGenerator = new TitleGenerator(apiKey);
+    const titleGenerator = new TitleGenerator(profile.openrouter_api_key);
     const generatedTitle = await titleGenerator.generateTitle(userMessage, assistantResponse);
 
-    // For guest users, just return the title (no database update)
-    if (isGuest) {
-      return NextResponse.json({ title: generatedTitle });
-    }
-
-    // For regular users, update the conversation in database
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    // Update the conversation with the new title
     const { data: updatedConversation, error: updateError } = await supabase
       .from('conversations')
       .update({ title: generatedTitle })
       .eq('id', conversationId)
-      .eq('user_id', user!.id)
+      .eq('user_id', user.id)
       .select()
       .single();
 

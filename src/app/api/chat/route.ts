@@ -4,7 +4,14 @@ import { OpenRouterService } from '@/lib/openrouter';
 
 export async function POST(request: NextRequest) {
   try {
-    const { conversationId, message, model, attachments = [], isGuest } = await request.json();
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { conversationId, message, model, attachments = [] } = await request.json();
 
     if ((!message || message.trim() === '') && attachments.length === 0) {
       return NextResponse.json({ error: 'Message or attachments required' }, { status: 400 });
@@ -14,64 +21,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Model is required' }, { status: 400 });
     }
 
-    let apiKey: string;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('openrouter_api_key')
+      .eq('id', user.id)
+      .single();
 
-    // Handle guest users
-    if (isGuest) {
-      const guestApiKey = request.headers.get('X-Guest-API-Key');
-      if (!guestApiKey) {
-        return NextResponse.json({ error: 'Guest API key required' }, { status: 400 });
-      }
-      apiKey = guestApiKey;
-    } else {
-      // Handle regular authenticated users
-      const supabase = await createClient();
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('openrouter_api_key')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.openrouter_api_key) {
-        return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
-      }
-
-      apiKey = profile.openrouter_api_key;
-    }
-
-    // For guest users, skip database operations and go straight to API call
-    if (isGuest) {
-      const openrouter = new OpenRouterService(apiKey);
-      
-      // For guests, create a simple context just for the current message
-      const contextMessages = [
-        {
-          role: 'user' as const,
-          content: message,
-        }
-      ];
-
-      const stream = await openrouter.createChatCompletion(
-        model,
-        contextMessages,
-        attachments
-      );
-
-      return new Response(stream);
-    }
-
-    // Regular user flow continues below...
-    const supabase = await createClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!profile?.openrouter_api_key) {
+      return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
     }
 
     let conversation = null;
@@ -266,7 +223,7 @@ export async function POST(request: NextRequest) {
 
     // Build chat messages array with proper attachment formatting
     const formattedMessages = await Promise.all(
-      messages.map(async (msg: any) => ({
+      messages.map(async (msg) => ({
         role: msg.role as 'user' | 'assistant' | 'system',
         content: await formatMessageContent(msg)
       }))
@@ -282,7 +239,7 @@ export async function POST(request: NextRequest) {
       }
     ];
 
-    const openRouter = new OpenRouterService(apiKey);
+    const openRouter = new OpenRouterService(profile.openrouter_api_key);
     
     const encoder = new TextEncoder();
     const stream = new ReadableStream({

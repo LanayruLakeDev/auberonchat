@@ -33,8 +33,7 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);  const [profile, setProfile] = useState<Profile | null>(null);
   const [user, setUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingConversations, setIsLoadingConversations] = useState(false);
@@ -96,34 +95,25 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     } else {
       console.log('⏸️ URL_EFFECT: No matching conversation or empty list');
     }
-  }, [conversations]);  const refreshConversations = async () => {    try {
-      setIsLoadingConversations(true);
-      
-      // First check if we have an authenticated user
+  }, [conversations]);
+  const refreshConversations = async () => {
+    setIsLoadingConversations(true);
+    try {
+      // Check if user is authenticated
       if (user && !user.is_guest) {
-        // Regular authenticated user - fetch from API
         const response = await fetch('/api/conversations');
         if (response.ok) {
           const data = await response.json();
           setConversations(data.conversations || []);
         }
-        return;
-      }
-      
-      // Check if user is a guest
-      const guestUser = LocalStorage.getUser();
-      if (guestUser && guestUser.is_guest) {
-        // Load conversations from localStorage for guest users
-        const localConversations = LocalStorage.getConversations();
-        setConversations(localConversations || []);
-        return;
-      }
-      
-      // Regular user - fetch from API (fallback)
-      const response = await fetch('/api/conversations');
-      if (response.ok) {
-        const data = await response.json();
-        setConversations(data.conversations || []);
+      } else {
+        // Check if user is a guest
+        const guestUser = LocalStorage.getUser();
+        if (guestUser && guestUser.is_guest) {
+          // Load conversations from localStorage for guest users
+          const localConversations = LocalStorage.getConversations();
+          setConversations(localConversations);
+        }
       }
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -132,10 +122,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   };
   const refreshMessages = async (conversationId: string) => {
-    console.log('🔄 REFRESH_MESSAGES: Starting for conversation:', conversationId);    try {
-      // First check if we have an authenticated user
+    console.log('🔄 REFRESH_MESSAGES: Starting for conversation:', conversationId);
+    try {
+      // Check if user is authenticated
       if (user && !user.is_guest) {
-        // Regular authenticated user - fetch from API
         const response = await fetch(`/api/conversations/${conversationId}/messages`);
         if (response.ok) {
           const data = await response.json();
@@ -152,8 +142,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             );
             console.log('🔄 REFRESH_MESSAGES: Keeping', activeOptimisticMessages.length, 'active optimistic messages');
             
-            // Also keep finalized optimistic messages that aren't on the server yet
-            const finalizedOptimisticMessages = prev.filter(msg => 
+            // Keep finalized optimistic messages to prevent animation replay
+            const finalizedOptimisticMessages = prev.filter(msg =>
               msg.isOptimistic && 
               msg.conversation_id === conversationId &&
               !msg.isStreaming && 
@@ -179,61 +169,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             return finalMessages;
           });
         }
-        return;
-      }
-      
-      // Check if user is a guest
-      const guestUser = LocalStorage.getUser();
-      if (guestUser && guestUser.is_guest) {
-        // Load messages from localStorage for guest users
-        const localMessages = LocalStorage.getMessages(conversationId);
-        setMessages(localMessages || []);
-        return;
-      }
-      
-      // Regular user - fetch from API
-      const response = await fetch(`/api/conversations/${conversationId}/messages`);
-      if (response.ok) {
-        const data = await response.json();
-        const serverMessages = data.messages || [];
-        console.log('🔄 REFRESH_MESSAGES: Got', serverMessages.length, 'messages from server');
-        
-        setMessages(prev => {
-          console.log('🔄 REFRESH_MESSAGES: Current messages count:', prev.length);
-          // Keep optimistic messages that are actively streaming/loading
-          const activeOptimisticMessages = prev.filter(msg => 
-            msg.isOptimistic && 
-            msg.conversation_id === conversationId &&
-            (msg.isStreaming || msg.isLoading)
-          );
-          console.log('🔄 REFRESH_MESSAGES: Keeping', activeOptimisticMessages.length, 'active optimistic messages');
-          
-          // Keep finalized optimistic messages to prevent animation replay
-          const finalizedOptimisticMessages = prev.filter(msg =>
-            msg.isOptimistic && 
-            msg.conversation_id === conversationId &&
-            !msg.isStreaming && 
-            !msg.isLoading &&
-            msg.content && 
-            msg.content.trim() !== ''
-          );
-          console.log('🔄 REFRESH_MESSAGES: Keeping', finalizedOptimisticMessages.length, 'finalized optimistic messages');
-          
-          // Only add server messages that don't have corresponding finalized optimistic messages
-          const newServerMessages = serverMessages.filter((serverMsg: Message) => {
-            return !finalizedOptimisticMessages.some(optMsg => {
-              // Check if content matches (indicating same message)
-              return optMsg.content === serverMsg.content && 
-                     optMsg.role === serverMsg.role &&
-                     Math.abs(new Date(optMsg.created_at).getTime() - new Date(serverMsg.created_at).getTime()) < 30000; // Within 30 seconds
-            });
-          });
-          console.log('🔄 REFRESH_MESSAGES: Adding', newServerMessages.length, 'new server messages');
-          
-          const finalMessages = [...newServerMessages, ...finalizedOptimisticMessages, ...activeOptimisticMessages];
-          console.log('🔄 REFRESH_MESSAGES: Final message count:', finalMessages.length);
-          return finalMessages;
-        });
+      } else {
+        // Check if user is a guest
+        const guestUser = LocalStorage.getUser();
+        if (guestUser && guestUser.is_guest) {
+          // Load messages from localStorage for guest users
+          const localMessages = LocalStorage.getMessages(conversationId);
+          console.log('🔄 REFRESH_MESSAGES: Got', localMessages.length, 'messages from localStorage');
+          setMessages(localMessages);
+        }
       }
     } catch (error) {
       console.error('❌ REFRESH_MESSAGES: Error fetching messages:', error);
@@ -261,32 +205,31 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
-  };  const refreshUser = async () => {
+  };
+  const refreshUser = async () => {
     try {
-      // First check Supabase auth for authenticated users
       const supabase = createClient();
       const { data: { user }, error } = await supabase.auth.getUser();
       if (!error && user) {
-        // Clear any guest data if an authenticated user is found
-        const guestUser = LocalStorage.getUser();
-        if (guestUser && guestUser.is_guest) {
-          localStorage.removeItem('auberon_local_user');
-        }
         setUser(user);
-        return;
-      }
-      
-      // If no authenticated user, check for guest user in localStorage
-      const guestUser = LocalStorage.getUser();
-      if (guestUser && guestUser.is_guest) {
+        // Clear guest data when real user logs in
+        LocalStorage.clearGuestData();
+      } else {
+        // Check if we have a guest user, or create one
+        let guestUser = LocalStorage.getUser();
+        if (!guestUser) {
+          guestUser = LocalStorage.createGuestUser();
+        }
         setUser(guestUser);
-        return;
       }
-      
-      // No user found
-      setUser(null);
     } catch (error) {
       console.error('Error fetching user:', error);
+      // Fallback to guest user
+      let guestUser = LocalStorage.getUser();
+      if (!guestUser) {
+        guestUser = LocalStorage.createGuestUser();
+      }
+      setUser(guestUser);
     }
   };
 

@@ -11,22 +11,16 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { profile, refreshProfile, user } = useChat();
+  const { profile, refreshProfile } = useChat();
   const [apiKey, setApiKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
 
   useEffect(() => {
-    if (user?.is_guest) {
-      // For guest users, load API key from localStorage
-      const guestApiKey = localStorage.getItem('guest_api_key');
-      if (guestApiKey) {
-        setApiKey(guestApiKey);
-      }
-    } else if (profile?.openrouter_api_key) {
+    if (profile?.openrouter_api_key) {
       setApiKey(profile.openrouter_api_key);
     }
-  }, [profile, user]);
+  }, [profile]);
 
   const handleSave = async () => {
     if (!apiKey.trim()) {
@@ -36,41 +30,34 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
     setIsLoading(true);
     try {
-      if (user?.is_guest) {
-        // For guest users, save to localStorage
-        localStorage.setItem('guest_api_key', apiKey.trim());
-        onClose();
-      } else {
-        // For regular users, save to profile
-        const response = await fetch('/api/profile', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            openrouter_api_key: apiKey.trim(),
-          }),
-        });
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          openrouter_api_key: apiKey.trim(),
+        }),
+      });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('API Error:', errorData);
-          
-          // Show more specific error messages
-          if (response.status === 401) {
-            throw new Error('Authentication failed. Please log in again.');
-          } else if (response.status === 400) {
-            throw new Error(errorData.error || 'Invalid API key format');
-          } else if (response.status === 500) {
-            throw new Error(`Server error: ${errorData.details || errorData.error || 'Unknown error'}`);
-          } else {
-            throw new Error(errorData.error || 'Failed to save API key');
-          }
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API Error:', errorData);
+        
+        // Show more specific error messages
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please log in again.');
+        } else if (response.status === 400) {
+          throw new Error(errorData.error || 'Invalid API key format');
+        } else if (response.status === 500) {
+          throw new Error(`Server error: ${errorData.details || errorData.error || 'Unknown error'}`);
+        } else {
+          throw new Error(errorData.error || 'Failed to save API key');
         }
-
-        await refreshProfile();
-        onClose();
       }
+
+      await refreshProfile();
+      onClose();
     } catch (error) {
       console.error('Error saving API key:', error);
       alert(error instanceof Error ? error.message : 'Failed to save API key');
@@ -199,66 +186,18 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
               </motion.div>
 
-              {user?.is_guest ? (
-                // Guest Status Section
+              {profile && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
                   className="glass rounded-2xl p-4 border border-white/10"
                 >
-                  <h4 className="font-medium text-white mb-3">Guest Mode</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/60">Status:</span>
-                      <span className="text-orange-400 font-medium">Guest User</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/60">API Key:</span>
-                      {apiKey ? (
-                        <span className="font-mono text-green-400">
-                          {showApiKey ? apiKey : maskApiKey(apiKey)}
-                        </span>
-                      ) : (
-                        <span className="text-red-400">Not configured</span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/60">Data Storage:</span>
-                      <span className="text-blue-400">Local Device</span>
-                    </div>
-                  </div>
-                  
-                  <motion.button
-                    onClick={() => window.open('/login', '_blank')}
-                    className="w-full mt-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-medium py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Shield size={16} />
-                    Upgrade to Premium
-                  </motion.button>
-                </motion.div>
-              ) : profile ? (
-                // Authenticated User Status Section
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="glass rounded-2xl p-4 border border-white/10"
-                >
-                  <h4 className="font-medium text-white mb-3">Account Status</h4>
+                  <h4 className="font-medium text-white mb-3">Current Status</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-white/60">Email:</span>
                       <span className="font-mono text-white/80">{profile.email}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/60">Status:</span>
-                      <span className="text-green-400 font-medium flex items-center gap-1">
-                        <Shield size={14} />
-                        Premium Active
-                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-white/60">API Key:</span>
@@ -270,13 +209,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         <span className="text-red-400">Not configured</span>
                       )}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/60">Data Storage:</span>
-                      <span className="text-green-400">Cloud Synced</span>
-                    </div>
                   </div>
                 </motion.div>
-              ) : null}
+              )}
             </motion.div>
 
             <motion.div
