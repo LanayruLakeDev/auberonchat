@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Conversation, Message, Profile } from '@/types/chat';
 import { createClient } from '@/lib/supabase-client';
+import { LocalStorage } from '@/lib/localStorage';
 
 interface ChatContextType {
   conversations: Conversation[];
@@ -94,9 +95,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       console.log('⏸️ URL_EFFECT: No matching conversation or empty list');
     }
   }, [conversations]);
-
   const refreshConversations = async () => {
     try {
+      // Check if user is a guest
+      const guestUser = LocalStorage.getUser();
+      if (guestUser) {
+        // Load conversations from localStorage for guest users
+        const localConversations = LocalStorage.getConversations();
+        setConversations(localConversations || []);
+        return;
+      }
+      
+      // Regular user - fetch from API
       const response = await fetch('/api/conversations');
       if (response.ok) {
         const data = await response.json();
@@ -106,10 +116,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       console.error('Error fetching conversations:', error);
     }
   };
-
   const refreshMessages = async (conversationId: string) => {
     console.log('🔄 REFRESH_MESSAGES: Starting for conversation:', conversationId);
     try {
+      // Check if user is a guest
+      const guestUser = LocalStorage.getUser();
+      if (guestUser) {
+        // Load messages from localStorage for guest users
+        const localMessages = LocalStorage.getMessages(conversationId);
+        setMessages(localMessages || []);
+        return;
+      }
+      
+      // Regular user - fetch from API
       const response = await fetch(`/api/conversations/${conversationId}/messages`);
       if (response.ok) {
         const data = await response.json();
@@ -180,9 +199,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       console.error('Error fetching profile:', error);
     }
   };
-
   const refreshUser = async () => {
     try {
+      // First check for guest user in localStorage
+      const guestUser = LocalStorage.getUser();
+      if (guestUser) {
+        setUser(guestUser);
+        return;
+      }
+      
+      // If no guest user, check Supabase auth
       const supabase = createClient();
       const { data: { user }, error } = await supabase.auth.getUser();
       if (!error && user) {

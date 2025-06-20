@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Github, Mail, Lock, Eye, EyeOff, Sparkles, Users } from 'lucide-react'
 import Image from 'next/image'
+import { GuestNamePrompt } from '@/components/GuestNamePrompt'
+import { LocalStorage, createGuestUser } from '@/lib/localStorage'
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
@@ -17,26 +19,26 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [showGuestPrompt, setShowGuestPrompt] = useState(false)
 
   const supabase = createClient()
   const router = useRouter()
 
   const handleGuestLogin = async () => {
+    setShowGuestPrompt(true)
+  }
+
+  const handleGuestNameSubmit = async (displayName: string) => {
     setLoading(true)
     setError('')
 
     try {
-      // Sign in as a shared guest account
-      const { error } = await supabase.auth.signInWithPassword({
-        email: 'guest@auberon.chat',
-        password: 'guestuser123456',
-      })
+      // Create guest user in localStorage
+      const guestUser = createGuestUser(displayName)
+      LocalStorage.setUser(guestUser)
       
-      if (error) {
-        setError('Guest login temporarily unavailable. Please try again.')
-      } else {
-        router.push('/chat')
-      }
+      // Redirect to chat
+      router.push('/chat')
     } catch (err) {
       setError('An unexpected error occurred')
     } finally {
@@ -131,6 +133,15 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (showGuestPrompt) {
+    return (
+      <GuestNamePrompt 
+        onNameSubmit={handleGuestNameSubmit}
+        isLoading={loading}
+      />
+    )
   }
 
   return (
