@@ -14,9 +14,9 @@ import {
   getMaxFileSizeForModel,
   getModelCapabilityDescription 
 } from '@/lib/model-capabilities';
+import { LocalStorage, generateId } from '@/lib/localStorage';
 
-export function ChatInput() {
-  const {
+export function ChatInput() {  const {
     activeConversation,
     refreshConversations,
     refreshMessages,
@@ -27,7 +27,11 @@ export function ChatInput() {
     updateStreamingMessage,
     finalizeMessage,
     removeOptimisticMessage,
+    user,
   } = useChat();
+
+  // Check if user is a guest
+  const isGuest = user?.is_guest || false;
 
   const [message, setMessage] = useState('');
   const [selectedModel, setSelectedModel] = useState(() => {
@@ -127,12 +131,90 @@ export function ChatInput() {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }  }, [message]);
+
+  // Guest mode handlers - handle everything locally
+  const handleGuestSubmit = async (e: React.FormEvent) => {
+    const userMessage = message;
+    const messageAttachments = [...attachments];
+    setMessage('');
+    setIsLoading(true);
+    setAttachments([]);
+    
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
     }
-  }, [message]);
+
+    try {
+      let conversationId = activeConversation?.id;
+      
+      // Create conversation if it doesn't exist
+      if (!conversationId) {
+        const newConversation = {
+          id: generateId(),
+          user_id: user!.id,
+          title: 'New Chat',
+          model: selectedModel,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        LocalStorage.addConversation(newConversation);
+        setActiveConversation(newConversation);
+        conversationId = newConversation.id;
+        await refreshConversations();
+      }
+
+      // Add user message
+      const userMessageObj = {
+        id: generateId(),
+        conversation_id: conversationId,
+        role: 'user' as const,
+        content: userMessage,
+        attachments: messageAttachments,
+        created_at: new Date().toISOString()
+      };
+      
+      LocalStorage.addMessage(conversationId, userMessageObj);
+
+      // Add assistant message (demo response)
+      const assistantMessageObj = {
+        id: generateId(),
+        conversation_id: conversationId,
+        role: 'assistant' as const,
+        content: "I'm a demo assistant response for guest mode. In the full version, this would connect to AI models to give you real responses! To get real AI responses, please create an account.",
+        created_at: new Date().toISOString()
+      };
+      
+      // Simulate streaming delay
+      setTimeout(async () => {
+        LocalStorage.addMessage(conversationId!, assistantMessageObj);
+        await refreshMessages(conversationId!);
+      }, 1000);
+
+      await refreshMessages(conversationId);
+    } catch (error) {
+      console.error('Guest message error:', error);
+      alert('Failed to send message in guest mode');
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+        }
+      }, 100);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!message.trim() && attachments.length === 0) || isLoading) return;
+
+    // Handle guest users with local storage
+    if (isGuest) {
+      await handleGuestSubmit(e);
+      return;
+    }
 
     const userMessage = message;
     const messageAttachments = [...attachments];
@@ -329,6 +411,87 @@ export function ChatInput() {
       setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.focus();
+        }      }, 100);
+    }
+  };
+
+  // Guest consensus mode handler
+  const handleGuestConsensusSubmit = async (e: React.FormEvent) => {
+    const userMessage = message;
+    const messageAttachments = [...attachments];
+    setMessage('');
+    setIsLoading(true);
+    setAttachments([]);
+    
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+
+    try {
+      let conversationId = activeConversation?.id;
+      
+      // Create conversation if it doesn't exist
+      if (!conversationId) {
+        const newConversation = {
+          id: generateId(),
+          user_id: user!.id,
+          title: 'New Chat',
+          model: selectedModels[0] || 'consensus',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        LocalStorage.addConversation(newConversation);
+        setActiveConversation(newConversation);
+        conversationId = newConversation.id;
+        await refreshConversations();
+      }
+
+      // Add user message
+      const userMessageObj = {
+        id: generateId(),
+        conversation_id: conversationId,
+        role: 'user' as const,
+        content: userMessage,
+        attachments: messageAttachments,
+        created_at: new Date().toISOString()
+      };
+      
+      LocalStorage.addMessage(conversationId, userMessageObj);
+
+      // Add consensus assistant message
+      const consensusResponses = selectedModels.map(model => ({
+        model,
+        content: `Demo response from ${model} in guest mode. This would normally be a real AI response from ${model}!`,
+        isLoading: false,
+        responseTime: Math.random() * 2000 + 1000,
+      }));
+
+      const assistantMessageObj = {
+        id: generateId(),
+        conversation_id: conversationId,
+        role: 'assistant' as const,
+        content: JSON.stringify(consensusResponses),
+        isConsensus: true,
+        consensusResponses,
+        created_at: new Date().toISOString()
+      };
+      
+      // Simulate streaming delay
+      setTimeout(async () => {
+        LocalStorage.addMessage(conversationId!, assistantMessageObj);
+        await refreshMessages(conversationId!);
+      }, 1500);
+
+      await refreshMessages(conversationId);
+    } catch (error) {
+      console.error('Guest consensus error:', error);
+      alert('Failed to send consensus message in guest mode');
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
         }
       }, 100);
     }
@@ -337,6 +500,12 @@ export function ChatInput() {
   const handleConsensusSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!message.trim() && attachments.length === 0) || isLoading || selectedModels.length === 0) return;
+
+    // Handle guest users with local storage
+    if (isGuest) {
+      await handleGuestConsensusSubmit(e);
+      return;
+    }
 
     const userMessage = message;
     const messageAttachments = [...attachments];
