@@ -51,7 +51,8 @@ export function ChatPageContent({ chatId }: ChatPageContentProps) {
     );
   }
 
-  if (!profile?.openrouter_api_key) {
+  // For guest users, skip the API key requirement
+  if (!user?.is_guest && !profile?.openrouter_api_key) {
     return (
       <div className="h-screen flex items-center justify-center animated-bg">
         <motion.div

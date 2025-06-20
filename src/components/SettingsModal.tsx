@@ -11,16 +11,22 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { profile, refreshProfile } = useChat();
+  const { profile, refreshProfile, user } = useChat();
   const [apiKey, setApiKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
 
   useEffect(() => {
-    if (profile?.openrouter_api_key) {
+    if (user?.is_guest) {
+      // For guest users, load API key from localStorage
+      const guestApiKey = localStorage.getItem('guest_api_key');
+      if (guestApiKey) {
+        setApiKey(guestApiKey);
+      }
+    } else if (profile?.openrouter_api_key) {
       setApiKey(profile.openrouter_api_key);
     }
-  }, [profile]);
+  }, [profile, user]);
 
   const handleSave = async () => {
     if (!apiKey.trim()) {
@@ -30,34 +36,41 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          openrouter_api_key: apiKey.trim(),
-        }),
-      });
+      if (user?.is_guest) {
+        // For guest users, save to localStorage
+        localStorage.setItem('guest_api_key', apiKey.trim());
+        onClose();
+      } else {
+        // For regular users, save to profile
+        const response = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            openrouter_api_key: apiKey.trim(),
+          }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('API Error:', errorData);
-        
-        // Show more specific error messages
-        if (response.status === 401) {
-          throw new Error('Authentication failed. Please log in again.');
-        } else if (response.status === 400) {
-          throw new Error(errorData.error || 'Invalid API key format');
-        } else if (response.status === 500) {
-          throw new Error(`Server error: ${errorData.details || errorData.error || 'Unknown error'}`);
-        } else {
-          throw new Error(errorData.error || 'Failed to save API key');
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('API Error:', errorData);
+          
+          // Show more specific error messages
+          if (response.status === 401) {
+            throw new Error('Authentication failed. Please log in again.');
+          } else if (response.status === 400) {
+            throw new Error(errorData.error || 'Invalid API key format');
+          } else if (response.status === 500) {
+            throw new Error(`Server error: ${errorData.details || errorData.error || 'Unknown error'}`);
+          } else {
+            throw new Error(errorData.error || 'Failed to save API key');
+          }
         }
-      }
 
-      await refreshProfile();
-      onClose();
+        await refreshProfile();
+        onClose();
+      }
     } catch (error) {
       console.error('Error saving API key:', error);
       alert(error instanceof Error ? error.message : 'Failed to save API key');
