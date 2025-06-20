@@ -86,7 +86,11 @@ export async function POST(request: NextRequest) {
 
     // Regular user flow continues below...
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     let conversation = null;
     let messages = [];
