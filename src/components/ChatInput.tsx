@@ -132,7 +132,6 @@ export function ChatInput() {  const {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }  }, [message]);
-
   // Guest mode handlers - handle everything locally
   const handleGuestSubmit = async (e: React.FormEvent) => {
     const userMessage = message;
@@ -176,23 +175,147 @@ export function ChatInput() {  const {
       };
       
       LocalStorage.addMessage(conversationId, userMessageObj);
-
-      // Add assistant message (demo response)
-      const assistantMessageObj = {
-        id: generateId(),
-        conversation_id: conversationId,
-        role: 'assistant' as const,
-        content: "I'm a demo assistant response for guest mode. In the full version, this would connect to AI models to give you real responses! To get real AI responses, please create an account.",
-        created_at: new Date().toISOString()
-      };
-      
-      // Simulate streaming delay
-      setTimeout(async () => {
-        LocalStorage.addMessage(conversationId!, assistantMessageObj);
-        await refreshMessages(conversationId!);
-      }, 1000);
-
       await refreshMessages(conversationId);
+
+      // Check if guest has API key for real responses
+      const guestApiKey = localStorage.getItem('guest_api_key');
+      
+      if (guestApiKey) {
+        // Make real API call with guest's API key
+        try {
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Guest-API-Key': guestApiKey, // Custom header for guest API key
+            },
+            body: JSON.stringify({
+              message: userMessage,
+              model: selectedModel,
+              conversationId: conversationId,
+              attachments: messageAttachments,
+              isGuest: true, // Flag to indicate guest mode
+            }),
+          });
+
+          if (response.ok && response.body) {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let assistantContent = '';
+            const assistantMessageId = generateId();
+
+            // Add initial assistant message
+            const assistantMessageObj = {
+              id: assistantMessageId,
+              conversation_id: conversationId,
+              role: 'assistant' as const,
+              content: '',
+              created_at: new Date().toISOString()
+            };
+            LocalStorage.addMessage(conversationId, assistantMessageObj);
+            await refreshMessages(conversationId);
+
+            // Stream the response
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value, { stream: true });
+              const lines = chunk.split('\n');
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const data = line.slice(6);
+                  if (data === '[DONE]') continue;
+
+                  try {
+                    const parsed = JSON.parse(data);
+                    if (parsed.chunk) {
+                      assistantContent += parsed.chunk;
+                      // Update the message in localStorage
+                      const updatedMessage = {
+                        ...assistantMessageObj,
+                        content: assistantContent
+                      };
+                      LocalStorage.updateMessage(conversationId, assistantMessageId, updatedMessage);
+                      await refreshMessages(conversationId);
+                    }
+                  } catch (e) {
+                    console.error('Error parsing streaming data:', e);
+                  }
+                }
+              }
+            }
+
+            // Update conversation title if needed
+            if (assistantContent && !activeConversation?.title.includes('Chat') === false) {
+              try {
+                const titleResponse = await fetch('/api/generate-title', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-Guest-API-Key': guestApiKey,
+                  },
+                  body: JSON.stringify({
+                    userMessage,
+                    assistantResponse: assistantContent,
+                    isGuest: true,
+                  }),
+                });                if (titleResponse.ok) {
+                  const titleData = await titleResponse.json();
+                  if (titleData.title) {
+                    LocalStorage.updateConversation(conversationId, {
+                      title: titleData.title,
+                      updated_at: new Date().toISOString()
+                    });
+                    const updatedConversation = {
+                      ...activeConversation!,
+                      title: titleData.title,
+                      updated_at: new Date().toISOString()
+                    };
+                    setActiveConversation(updatedConversation);
+                    await refreshConversations();
+                  }
+                }
+              } catch (titleError) {
+                console.error('Error generating title for guest:', titleError);
+              }
+            }
+          } else {
+            throw new Error('API call failed');
+          }
+        } catch (apiError) {
+          console.error('API error for guest:', apiError);
+          // Fall back to helpful error message
+          const assistantMessageObj = {
+            id: generateId(),
+            conversation_id: conversationId,
+            role: 'assistant' as const,
+            content: "❌ **Error**: Failed to get AI response. Please check your API key or internet connection. You can update your API key in settings ⚙️",
+            created_at: new Date().toISOString()
+          };
+          
+          setTimeout(async () => {
+            LocalStorage.addMessage(conversationId!, assistantMessageObj);
+            await refreshMessages(conversationId!);
+          }, 500);
+        }
+      } else {
+        // No API key - provide helpful demo response encouraging key setup
+        const assistantMessageObj = {
+          id: generateId(),
+          conversation_id: conversationId,
+          role: 'assistant' as const,
+          content: "👋 **Welcome to Auberon Chat!** I'm ready to help you with real AI responses. To get started, please add your OpenRouter API key in the settings ⚙️ (top-right corner). Once you add your key, you'll have access to all AI models and features!\n\n🎯 **Why add an API key?**\n• Access to GPT-4, Claude, Gemini and more\n• Real-time streaming responses\n• Consensus mode with multiple AI models\n• Full chat experience\n\n💡 **Tip**: Consider creating a free account later to sync your chats across devices!",
+          created_at: new Date().toISOString()
+        };
+        
+        // Simulate streaming delay for better UX
+        setTimeout(async () => {
+          LocalStorage.addMessage(conversationId!, assistantMessageObj);
+          await refreshMessages(conversationId!);
+        }, 1000);
+      }
     } catch (error) {
       console.error('Guest message error:', error);
       alert('Failed to send message in guest mode');
@@ -414,7 +537,6 @@ export function ChatInput() {  const {
         }      }, 100);
     }
   };
-
   // Guest consensus mode handler
   const handleGuestConsensusSubmit = async (e: React.FormEvent) => {
     const userMessage = message;
@@ -436,7 +558,7 @@ export function ChatInput() {  const {
           id: generateId(),
           user_id: user!.id,
           title: 'New Chat',
-          model: selectedModels[0] || 'consensus',
+          model: `consensus:${selectedModels.join(',')}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -458,32 +580,99 @@ export function ChatInput() {  const {
       };
       
       LocalStorage.addMessage(conversationId, userMessageObj);
-
-      // Add consensus assistant message
-      const consensusResponses = selectedModels.map(model => ({
-        model,
-        content: `Demo response from ${model} in guest mode. This would normally be a real AI response from ${model}!`,
-        isLoading: false,
-        responseTime: Math.random() * 2000 + 1000,
-      }));
-
-      const assistantMessageObj = {
-        id: generateId(),
-        conversation_id: conversationId,
-        role: 'assistant' as const,
-        content: JSON.stringify(consensusResponses),
-        isConsensus: true,
-        consensusResponses,
-        created_at: new Date().toISOString()
-      };
-      
-      // Simulate streaming delay
-      setTimeout(async () => {
-        LocalStorage.addMessage(conversationId!, assistantMessageObj);
-        await refreshMessages(conversationId!);
-      }, 1500);
-
       await refreshMessages(conversationId);
+
+      // Check if guest has API key for real responses
+      const guestApiKey = localStorage.getItem('guest_api_key');
+      
+      if (guestApiKey) {
+        // Make real consensus API call
+        try {
+          const response = await fetch('/api/chat/consensus', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Guest-API-Key': guestApiKey,
+            },
+            body: JSON.stringify({
+              message: userMessage,
+              models: selectedModels,
+              conversationId: conversationId,
+              attachments: messageAttachments,
+              isGuest: true,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const consensusResponses = data.responses || [];
+            
+            const assistantMessageObj = {
+              id: generateId(),
+              conversation_id: conversationId,
+              role: 'assistant' as const,
+              content: JSON.stringify(consensusResponses),
+              isConsensus: true,
+              consensusResponses,
+              created_at: new Date().toISOString()
+            };
+            
+            LocalStorage.addMessage(conversationId, assistantMessageObj);
+            await refreshMessages(conversationId);
+          } else {
+            throw new Error('Consensus API call failed');
+          }
+        } catch (apiError) {
+          console.error('Consensus API error for guest:', apiError);
+          // Fall back to error message
+          const consensusResponses = selectedModels.map(model => ({
+            model,
+            content: `❌ Error getting response from ${model}. Please check your API key.`,
+            isLoading: false,
+            error: 'API Error',
+            responseTime: 0,
+          }));
+
+          const assistantMessageObj = {
+            id: generateId(),
+            conversation_id: conversationId,
+            role: 'assistant' as const,
+            content: JSON.stringify(consensusResponses),
+            isConsensus: true,
+            consensusResponses,
+            created_at: new Date().toISOString()
+          };
+          
+          setTimeout(async () => {
+            LocalStorage.addMessage(conversationId!, assistantMessageObj);
+            await refreshMessages(conversationId!);
+          }, 500);
+        }
+      } else {
+        // No API key - provide helpful demo responses encouraging key setup
+        const consensusResponses = selectedModels.map(model => ({
+          model,
+          content: `🤖 **${model.split('/')[1] || model}**: I'm ready to provide real responses! Please add your OpenRouter API key in settings ⚙️ to unlock full consensus mode with multiple AI models.`,
+          isLoading: false,
+          responseTime: 1000 + Math.random() * 1000,
+        }));
+
+        const assistantMessageObj = {
+          id: generateId(),
+          conversation_id: conversationId,
+          role: 'assistant' as const,
+          content: JSON.stringify(consensusResponses),
+          isConsensus: true,
+          consensusResponses,
+          created_at: new Date().toISOString()
+        };
+        
+        // Simulate streaming delay for better UX
+        setTimeout(async () => {
+          LocalStorage.addMessage(conversationId!, assistantMessageObj);
+          await refreshMessages(conversationId!);
+        }, 1500);
+      }
     } catch (error) {
       console.error('Guest consensus error:', error);
       alert('Failed to send consensus message in guest mode');
