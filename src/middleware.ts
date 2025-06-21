@@ -14,12 +14,12 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        setAll(cookiesToSet: any) {
+          cookiesToSet.forEach(({ name, value }: any) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request,
           })
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value, options }: any) =>
             supabaseResponse.cookies.set(name, value, options)
           )
         },
@@ -53,23 +53,22 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!user && !isPublicRoute) {
-    // Redirect to /chat instead of /login - guests will be handled there
+    // Redirect unauthenticated users to login for protected routes
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
+  if (user && request.nextUrl.pathname.startsWith('/login')) {
+    // Redirect authenticated users from login to chat
     const url = request.nextUrl.clone()
     url.pathname = '/chat'
     return NextResponse.redirect(url)
   }
 
-  if (user && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname === '/')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/chat'
-    return NextResponse.redirect(url)
-  }
-
-  // Redirect root to chat
+  // Let root page handle redirect logic (to check for guest users client-side)
   if (request.nextUrl.pathname === '/') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/chat'
-    return NextResponse.redirect(url)
+    return supabaseResponse
   }
 
   return supabaseResponse
@@ -79,4 +78,4 @@ export const config = {
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-} 
+}
