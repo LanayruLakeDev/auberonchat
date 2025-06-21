@@ -25,23 +25,44 @@ export default function LoginPage() {
   const router = useRouter()
 
   const handleGuestLogin = async () => {
+    console.log('🎯 GUEST_LOGIN: Button clicked, showing prompt');
     setShowGuestPrompt(true)
   }
 
   const handleGuestNameSubmit = async (displayName: string) => {
+    console.log('🎯 GUEST_NAME_SUBMIT: Starting with name:', displayName);
     setLoading(true)
     setError('')
 
     try {
       // Create guest user in localStorage
       const guestUser = createGuestUser(displayName)
+      console.log('🎯 GUEST_NAME_SUBMIT: Created guest user:', guestUser);
+      
       LocalStorage.setUser(guestUser)
+      console.log('🎯 GUEST_NAME_SUBMIT: Stored guest user, redirecting to /chat');
+      
+      // Verify it was stored
+      const storedUser = LocalStorage.getUser();
+      console.log('🎯 GUEST_NAME_SUBMIT: Verified stored user:', storedUser);
+      
+      // Hide the prompt immediately to prevent re-rendering
+      setShowGuestPrompt(false);
+      
+      // Small delay to ensure localStorage is committed
+      console.log('🎯 GUEST_NAME_SUBMIT: Waiting for localStorage to commit...');
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Redirect to chat
-      router.push('/chat')
+      console.log('🎯 GUEST_NAME_SUBMIT: Attempting redirect to /chat');
+      window.location.href = '/chat';
+      
+      // Don't set loading to false here - let the redirect handle it
+      console.log('🎯 GUEST_NAME_SUBMIT: Redirect initiated');
+      
     } catch (err) {
+      console.error('🎯 GUEST_NAME_SUBMIT: Error:', err);
       setError('An unexpected error occurred')
-    } finally {
       setLoading(false)
     }
   }
@@ -136,6 +157,7 @@ export default function LoginPage() {
   }
 
   if (showGuestPrompt) {
+    console.log('🎯 GUEST_PROMPT: Rendering GuestNamePrompt component');
     return (
       <GuestNamePrompt 
         onNameSubmit={handleGuestNameSubmit}

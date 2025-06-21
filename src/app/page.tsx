@@ -10,12 +10,14 @@ export default function Home() {
 
   useEffect(() => {
     const checkUserAndRedirect = async () => {
+      console.log('🏠 ROOT_PAGE: Checking user and redirecting...');
       const supabase = createClient();
       
       // Check for authenticated user first
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
+        console.log('🏠 ROOT_PAGE: Found authenticated user, redirecting to /chat');
         // Authenticated user - redirect to chat
         router.push('/chat');
         return;
@@ -23,13 +25,16 @@ export default function Home() {
       
       // Check for guest user in localStorage
       const guestUser = LocalStorage.getUser();
+      console.log('🏠 ROOT_PAGE: Checking for guest user:', guestUser);
       
       if (guestUser?.is_guest) {
+        console.log('🏠 ROOT_PAGE: Found guest user, redirecting to /chat');
         // Guest user exists - redirect to chat
         router.push('/chat');
         return;
       }
       
+      console.log('🏠 ROOT_PAGE: No user found, redirecting to /login');
       // No user found - redirect to login
       router.push('/login');
     };
