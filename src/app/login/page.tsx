@@ -25,21 +25,27 @@ export default function LoginPage() {
   const router = useRouter()
 
   const handleGuestLogin = async () => {
+    console.log('🎯 GUEST_LOGIN: Button clicked, showing prompt');
     setShowGuestPrompt(true)
   }
 
   const handleGuestNameSubmit = async (displayName: string) => {
+    console.log('🎯 GUEST_NAME_SUBMIT: Starting with name:', displayName);
     setLoading(true)
     setError('')
 
     try {
       // Create guest user in localStorage
       const guestUser = createGuestUser(displayName)
+      console.log('🎯 GUEST_NAME_SUBMIT: Created guest user:', guestUser);
+      
       LocalStorage.setUser(guestUser)
+      console.log('🎯 GUEST_NAME_SUBMIT: Stored guest user, redirecting to /chat');
       
       // Redirect to chat
       router.push('/chat')
     } catch (err) {
+      console.error('🎯 GUEST_NAME_SUBMIT: Error:', err);
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -136,6 +142,7 @@ export default function LoginPage() {
   }
 
   if (showGuestPrompt) {
+    console.log('🎯 GUEST_PROMPT: Rendering GuestNamePrompt component');
     return (
       <GuestNamePrompt 
         onNameSubmit={handleGuestNameSubmit}
@@ -208,6 +215,7 @@ export default function LoginPage() {
 
           <div className="space-y-3 mb-6">
             <motion.button
+              type="button"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
