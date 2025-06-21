@@ -33,24 +33,13 @@ export default function LoginPage() {
     setError('')
 
     try {
-      console.log('🎯 GUEST_SUBMIT: Creating guest user with name:', displayName);
-      
       // Create guest user in localStorage
       const guestUser = createGuestUser(displayName)
-      console.log('🎯 GUEST_SUBMIT: Created guest user:', guestUser);
-      
       LocalStorage.setUser(guestUser)
-      console.log('🎯 GUEST_SUBMIT: Stored guest user in localStorage');
-      
-      // Verify it was stored
-      const storedUser = LocalStorage.getUser();
-      console.log('🎯 GUEST_SUBMIT: Verified stored user:', storedUser);
       
       // Redirect to chat
-      console.log('🎯 GUEST_SUBMIT: Redirecting to /chat');
-      router.push('/chat');
+      router.push('/chat')
     } catch (err) {
-      console.error('🎯 GUEST_SUBMIT: Error:', err);
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)

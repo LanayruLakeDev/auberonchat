@@ -26,13 +26,10 @@ export const LocalStorage = {
     const user = LocalStorage.getUser();
     return user?.id || null;
   },
+
   // User operations
   setUser: (user: LocalUser): void => {
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-    // Dispatch custom event for same-tab updates
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('auberonUserChange', { detail: user }));
-    }
   },
 
   getUser: (): LocalUser | null => {

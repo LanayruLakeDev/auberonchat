@@ -16,24 +16,25 @@ interface ChatPageContentProps {
 }
 
 export function ChatPageContent({ chatId }: ChatPageContentProps) {
-  const { profile, isLoading, conversations, setActiveConversation, activeConversation, user, isGuest } = useChat();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const { profile, isLoading, conversations, setActiveConversation, activeConversation, user, isGuest } = useChat();  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showApiKeyPrompt, setShowApiKeyPrompt] = useState(false);
   const router = useRouter();
   
   useDynamicTitle(activeConversation);
   useEffect(() => {
     if (!isLoading) {
-      // Check if user needs to set up API key - redirect to settings
+      // Check if user needs to set up API key - show onboarding prompt
       const needsApiKey = isGuest 
         ? !LocalStorage.getApiKey()
         : !profile?.openrouter_api_key;
         
       if (needsApiKey) {
-        // Redirect to settings page for API key setup
-        router.push('/settings');
+        setShowApiKeyPrompt(true);
+      } else {
+        setShowApiKeyPrompt(false);
       }
     }
-  }, [profile, isLoading, user, isGuest, router]);
+  }, [profile, isLoading, user, isGuest]);
 
   if (isLoading) {
     return (
@@ -53,7 +54,6 @@ export function ChatPageContent({ chatId }: ChatPageContentProps) {
       </div>
     );
   }
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -78,7 +78,37 @@ export function ChatPageContent({ chatId }: ChatPageContentProps) {
         className="flex-1 flex flex-col relative"
       >
         <ChatMessages isSidebarCollapsed={isSidebarCollapsed} />
-          <ChatInput />
+        <ChatInput />
+        
+        {/* API Key Onboarding Modal */}
+        {showApiKeyPrompt && (
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 max-w-md mx-4"
+            >
+              <h3 className="text-xl font-bold text-white mb-4">Setup Required</h3>
+              <p className="text-white/80 mb-6">
+                To start chatting, you need to configure your API key in settings.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => router.push('/settings')}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Go to Settings
+                </button>
+                <button
+                  onClick={() => setShowApiKeyPrompt(false)}
+                  className="px-4 py-2 text-white/60 hover:text-white transition-colors"
+                >
+                  Later
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
