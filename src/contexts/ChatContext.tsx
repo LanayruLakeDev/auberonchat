@@ -11,6 +11,7 @@ interface ChatContextType {
   messages: Message[];
   profile: Profile | null;
   user: any | null;
+  isGuest: boolean;
   isLoading: boolean;
   isLoadingConversations: boolean;
   setActiveConversation: (conversation: Conversation | null) => void;
@@ -395,7 +396,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setMessages([]);
     }
   }, [activeConversation]); // Don't include messages as dependency to avoid loops
-
   return (
     <ChatContext.Provider      value={{
         conversations,
@@ -403,6 +403,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         messages,
         profile,
         user,
+        isGuest: user?.is_guest || false,
         isLoading,
         isLoadingConversations,
         setActiveConversation,
