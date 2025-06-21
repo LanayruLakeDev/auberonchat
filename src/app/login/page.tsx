@@ -7,7 +7,7 @@ import { motion } from 'framer-motion'
 import { Github, Mail, Lock, Eye, EyeOff, Sparkles, Users } from 'lucide-react'
 import Image from 'next/image'
 import { GuestNamePrompt } from '@/components/GuestNamePrompt'
-import { LocalStorage, createGuestUser } from '@/lib/localStorage'
+import { LocalStorage } from '@/lib/localStorage'
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
@@ -35,33 +35,35 @@ export default function LoginPage() {
     setError('')
 
     try {
-      // Create guest user in localStorage
-      const guestUser = createGuestUser(displayName)
-      console.log('🎯 GUEST_NAME_SUBMIT: Created guest user:', guestUser);
-      
-      LocalStorage.setUser(guestUser)
-      console.log('🎯 GUEST_NAME_SUBMIT: Stored guest user, redirecting to /chat');
-      
-      // Verify it was stored
-      const storedUser = LocalStorage.getUser();
-      console.log('🎯 GUEST_NAME_SUBMIT: Verified stored user:', storedUser);
-      
-      // Hide the prompt immediately to prevent re-rendering
-      setShowGuestPrompt(false);
-      
-      // Small delay to ensure localStorage is committed
-      console.log('🎯 GUEST_NAME_SUBMIT: Waiting for localStorage to commit...');
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Redirect to chat
-      console.log('🎯 GUEST_NAME_SUBMIT: Attempting redirect to /chat');
-      window.location.href = '/chat';
-      
-      // Don't set loading to false here - let the redirect handle it
-      console.log('🎯 GUEST_NAME_SUBMIT: Redirect initiated');
-      
+      const response = await fetch('/api/auth/guest-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ displayName }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        console.log('✅ GUEST_NAME_SUBMIT: Guest user created:', result.guestUser);
+        
+        // Store guest user in localStorage
+        LocalStorage.setUser(result.guestUser)
+        console.log('🎯 GUEST_NAME_SUBMIT: Stored guest user, redirecting to chat...');
+        
+        // Hide the prompt immediately to prevent re-rendering
+        setShowGuestPrompt(false);
+        
+        // Use the redirect URL from the API response
+        window.location.href = result.redirectUrl
+      } else {
+        console.log('❌ GUEST_NAME_SUBMIT: Error during guest creation:', result.error);
+        setError(result.error || 'Guest creation failed')
+        setLoading(false)
+      }
     } catch (err) {
-      console.error('🎯 GUEST_NAME_SUBMIT: Error:', err);
+      console.error('🎯 GUEST_NAME_SUBMIT: Unexpected error:', err);
       setError('An unexpected error occurred')
       setLoading(false)
     }
@@ -75,15 +77,27 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
+        console.log('🔐 EMAIL_AUTH: Attempting login for:', email);
         
-        if (error) {
-          setError(error.message)
+        const response = await fetch('/api/auth/email-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        })
+
+        const result = await response.json()
+
+        if (response.ok && result.success) {
+          console.log('✅ EMAIL_AUTH: Login successful, user:', result.user.email);
+          console.log('� EMAIL_AUTH: Redirecting to chat...');
+          
+          // Use the redirect URL from the API response
+          window.location.href = result.redirectUrl
         } else {
-          router.push('/chat')
+          console.log('❌ EMAIL_AUTH: Error during login:', result.error);
+          setError(result.error || 'Login failed')
         }
       } else {
         if (password !== confirmPassword) {

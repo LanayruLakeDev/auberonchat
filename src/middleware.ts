@@ -37,6 +37,8 @@ export async function middleware(request: NextRequest) {
     '/login',
     '/auth/callback',
     '/auth/auth-code-error',
+    '/api/auth/email-login',
+    '/api/auth/guest-login',
     '/nutzungsbedingungen',
     '/datenschutz-chat',
     '/haftungsausschluss'
