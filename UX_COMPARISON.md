@@ -181,3 +181,38 @@ Users can choose their preferred approach:
 - **Privacy-focused**: Guest mode (data never leaves device)
 - **Convenience-focused**: Authenticated mode (cross-device sync)
 - **Both get the same powerful AI chat experience** 🚀
+
+---
+
+## 🔧 Technical Implementation Details
+
+### File Upload Implementation
+- **Authenticated Users**: Files uploaded to Supabase Storage with public URLs
+- **Guest Users**: Files converted to base64 data URLs and stored with conversation data
+- **Size Limits**: 5MB for guests (localStorage constraints), model-specific limits for authenticated users
+- **Compatibility**: Data URLs work seamlessly with `fetch()` and download links
+
+### Data Storage Patterns
+- **Guest Storage Key**: `auberon_user_guest-{randomId}` for isolation
+- **API Authentication**: Guest users use `X-Guest-API-Key` header, authenticated users use session cookies
+- **Context Switching**: ChatContext automatically detects user type and selects appropriate data source
+
+### Edge Cases & Behaviors Observed
+
+#### 🚨 **Suspicious/Notable Behaviors**
+1. **Race Conditions**: Initial user detection can have timing issues - resolved with proper async/await patterns
+2. **LocalStorage Limits**: Guests hitting 5-10MB localStorage limits with large file uploads (hence 5MB limit)
+3. **Session Persistence**: Guest sessions survive browser restarts but not localStorage clearing (expected)
+4. **API Key Security**: Both user types store API keys securely but in different locations (local vs encrypted DB)
+
+#### ⚠️ **Known Limitations**
+1. **Guest Data Recovery**: If localStorage is cleared, guest data is permanently lost (by design)
+2. **Cross-Device Sync**: Guests can't access data on different devices (expected limitation)
+3. **File Persistence**: Guest file attachments stored as base64 in localStorage (larger memory footprint)
+4. **Browser Compatibility**: Guest mode requires modern browser with localStorage support
+
+#### 🔄 **User Switching Behavior**
+1. **Data Isolation**: Switching between guest and authenticated maintains separate data stores
+2. **No Data Loss**: Both user types' data remains intact when switching
+3. **API Key Inheritance**: New guest users don't inherit previous guest API keys (security feature)
+4. **Session Handoff**: Smooth transitions between user modes without UI glitches

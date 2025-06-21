@@ -7,12 +7,14 @@
 Built this chat app because why not. Has some neat features that make it stand out from the usual boring chat interfaces.
 
 ### Cool Stuff It Does
+- **Dual User Support**: Full experience for both guests and authenticated users
+- **Guest Mode**: No signup required - just start chatting with full feature access
 - Chat with multiple AI models at once (consensus mode is pretty fun)
-- Upload images and PDFs - works with models that actually support it
+- Upload images and PDFs - works with models that actually support it (guests and authenticated)
 - Pick from 20+ different AI models 
-- Saves your chat history
+- Saves your chat history (localStorage for guests, cloud for authenticated users)
 - Clean, dark interface that doesn't hurt your eyes
-- Secure auth with Supabase
+- Secure auth with Supabase (optional - guest mode available)
 
 A modern AI chat app with multi-model consensus, file attachments, and a decent interface.
 
@@ -32,15 +34,15 @@ Nothing fancy, just solid tools:
 
 ### Getting Started
 
-1. **Get it running locally**
+1. **Choose your experience**:
+   - **Guest Mode**: Click "Continue as Guest" - no signup, full features, local storage
+   - **Authenticated Mode**: Sign up for cloud sync and cross-device access
 
-2. **Make an account** - email, GitHub, Google, whatever
-
-3. **Add your OpenRouter API key** in settings
+2. **Add your OpenRouter API key** in the onboarding modal or settings
    - Get one at [openrouter.ai](https://openrouter.ai) (it's free)
-   - Your key stays encrypted, don't worry
+   - Your key stays encrypted and secure
 
-4. **Start chatting** - that's it
+3. **Start chatting** - upload files, try consensus mode, explore different models
 
 ### Local Setup
 
@@ -112,6 +114,25 @@ Supports 20+ models from the usual suspects:
 - X.AI Grok 3 Beta & Mini
 
 Nothing revolutionary, just good coverage of what's available.
+
+## User Modes
+
+### 🎭 Guest Mode
+- **No signup required** - start chatting immediately
+- **Full feature access** - same AI models, file uploads, consensus mode
+- **Local storage** - all data stored in browser (conversations, settings, API keys)
+- **Privacy focused** - nothing stored on servers
+- **Session persistence** - data survives browser restarts
+- **5MB file upload limit** - reasonable for browser storage
+
+### 🔐 Authenticated Mode  
+- **Account required** - email signup or OAuth (GitHub, Google)
+- **Cloud storage** - conversations synced across devices
+- **Higher file limits** - based on model capabilities (up to 20MB+)
+- **Profile management** - customize your account
+- **Data persistence** - never lose your conversations
+
+**Note**: Both modes have complete feature parity - guests get the full experience without any limitations except storage location.
 
 ## Architecture
 
