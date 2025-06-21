@@ -8,11 +8,16 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (userError || !user) {
+    // Check for guest user with API key
+    const guestApiKey = request.headers.get('X-Guest-API-Key');
+    const isGuest = !!guestApiKey;
+
+    // For authenticated users, keep existing validation
+    if (!isGuest && (userError || !user)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { conversationId, message, models, attachments = [] } = await request.json();
+    const { conversationId, message, models, attachments = [], isGuest: bodyIsGuest } = await request.json();
 
     if ((!message || message.trim() === '') && attachments.length === 0) {
       return NextResponse.json({ error: 'Message or attachments required' }, { status: 400 });
@@ -22,88 +27,117 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'At least one model is required' }, { status: 400 });
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('openrouter_api_key')
-      .eq('id', user.id)
-      .single();
+    // Get API key based on user type
+    let openRouterApiKey: string;
+    
+    if (isGuest) {
+      // For guest users, use the API key from header
+      if (!guestApiKey) {
+        return NextResponse.json({ error: 'OpenRouter API key not provided' }, { status: 400 });
+      }
+      openRouterApiKey = guestApiKey;
+    } else {
+      // For authenticated users, get API key from profile (existing logic)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('openrouter_api_key')
+        .eq('id', user!.id)
+        .single();
 
-    if (!profile?.openrouter_api_key) {
-      return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
+      if (!profile?.openrouter_api_key) {
+        return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
+      }
+      openRouterApiKey = profile.openrouter_api_key;
     }
 
     let conversation = null;
     let messages = [];
 
-    if (conversationId) {
-      const { data: existingConversation } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('id', conversationId)
-        .eq('user_id', user.id)
-        .single();
-
-      if (existingConversation) {
-        conversation = existingConversation;
-        
-        const { data: existingMessages } = await supabase
-          .from('messages')
+    if (isGuest) {
+      // For guest users, we don't store conversations/messages in DB
+      // The client will handle conversation/message storage via localStorage
+      conversation = {
+        id: conversationId || `guest-consensus-${Date.now()}`,
+        title: 'Guest Consensus Chat',
+        model: `consensus:${models.join(',')}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      // Guest messages are handled client-side
+      messages = [];
+    } else {
+      // Existing authenticated user logic - unchanged
+      if (conversationId) {
+        const { data: existingConversation } = await supabase
+          .from('conversations')
           .select('*')
-          .eq('conversation_id', conversationId)
-          .order('created_at', { ascending: true });
+          .eq('id', conversationId)
+          .eq('user_id', user!.id)
+          .single();
 
-        messages = existingMessages || [];
+        if (existingConversation) {
+          conversation = existingConversation;
+          
+          const { data: existingMessages } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true });
+
+          messages = existingMessages || [];
+        }
       }
-    }
 
-    if (!conversation) {
-      const { data: newConversation, error: conversationError } = await supabase
-        .from('conversations')
+      if (!conversation) {
+        const { data: newConversation, error: conversationError } = await supabase
+          .from('conversations')
+          .insert({
+            user_id: user!.id,
+            title: 'New Chat',
+            model: `consensus:${models.join(',')}`,
+          })
+          .select()
+          .single();
+
+        if (conversationError || !newConversation) {
+          return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 });
+        }
+
+        conversation = newConversation;
+      }
+
+      const { data: userMessage, error: messageError } = await supabase
+        .from('messages')
         .insert({
-          user_id: user.id,
-          title: 'New Chat',
-          model: `consensus:${models.join(',')}`,
+          conversation_id: conversation.id,
+          role: 'user',
+          content: message || '',
         })
         .select()
         .single();
 
-      if (conversationError || !newConversation) {
-        return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 });
+      if (messageError || !userMessage) {
+        return NextResponse.json({ error: 'Failed to save user message' }, { status: 500 });
       }
 
-      conversation = newConversation;
-    }
+      // Save attachments if any
+      if (attachments.length > 0) {
+        const attachmentInserts = attachments.map((attachment: any) => ({
+          message_id: userMessage.id,
+          filename: attachment.filename,
+          file_type: attachment.file_type,
+          file_size: attachment.file_size,
+          file_url: attachment.file_url,
+        }));
 
-    const { data: userMessage, error: messageError } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversation.id,
-        role: 'user',
-        content: message || '',
-      })
-      .select()
-      .single();
+        const { error: attachmentError } = await supabase
+          .from('attachments')
+          .insert(attachmentInserts);
 
-    if (messageError || !userMessage) {
-      return NextResponse.json({ error: 'Failed to save user message' }, { status: 500 });
-    }
-
-    // Save attachments if any
-    if (attachments.length > 0) {
-      const attachmentInserts = attachments.map((attachment: any) => ({
-        message_id: userMessage.id,
-        filename: attachment.filename,
-        file_type: attachment.file_type,
-        file_size: attachment.file_size,
-        file_url: attachment.file_url,
-      }));
-
-      const { error: attachmentError } = await supabase
-        .from('attachments')
-        .insert(attachmentInserts);
-
-      if (attachmentError) {
-        console.error('Failed to save attachments:', attachmentError);
+        if (attachmentError) {
+          console.error('Failed to save attachments:', attachmentError);
+        }
       }
     }
 
@@ -223,7 +257,7 @@ export async function POST(request: NextRequest) {
 
     // Build conversation history with proper attachment formatting
     const formattedMessages = await Promise.all(
-      messages.map(async (msg) => ({
+      messages.map(async (msg: any) => ({
         role: msg.role,
         content: await formatMessageContent(msg)
       }))
@@ -241,7 +275,7 @@ export async function POST(request: NextRequest) {
       content: currentMessageContent,
     });
 
-    const openRouter = new OpenRouterService(profile.openrouter_api_key);
+    const openRouter = new OpenRouterService(openRouterApiKey);
 
     // Create a readable stream for Server-Sent Events
     const encoder = new TextEncoder();
@@ -331,18 +365,23 @@ export async function POST(request: NextRequest) {
           // Wait for all models to complete
           await Promise.all(modelPromises);
 
-          // Save the consensus message to database
-          const consensusContent = JSON.stringify(consensusResponses);
-          
-          const { data: assistantMessage } = await supabase
-            .from('messages')
-            .insert({
-              conversation_id: conversation.id,
-              role: 'assistant',
-              content: consensusContent,
-            })
-            .select()
-            .single();
+          // Save the consensus message to database (authenticated users only)
+          let assistantMessage = null;
+          if (!isGuest) {
+            const consensusContent = JSON.stringify(consensusResponses);
+            
+            const { data: savedMessage } = await supabase
+              .from('messages')
+              .insert({
+                conversation_id: conversation.id,
+                role: 'assistant',
+                content: consensusContent,
+              })
+              .select()
+              .single();
+              
+            assistantMessage = savedMessage;
+          }
 
           // Generate title for new conversations after first response
           if (messages.length === 0) {
@@ -350,18 +389,30 @@ export async function POST(request: NextRequest) {
               // Use the best response for title generation (first successful one)
               const bestResponse = consensusResponses.find(r => r.content && !r.error)?.content || '';
               
+              const titleRequestHeaders: Record<string, string> = {
+                'Content-Type': 'application/json',
+              };
+              
+              const titleRequestBody: any = {
+                userMessage: message,
+                assistantResponse: bestResponse,
+                conversationId: conversation.id,
+              };
+
+              if (isGuest) {
+                // For guest users, pass the API key and guest flag
+                titleRequestHeaders['X-Guest-API-Key'] = guestApiKey;
+                titleRequestBody.isGuest = true;
+              } else {
+                // For authenticated users, pass auth headers
+                titleRequestHeaders['Authorization'] = request.headers.get('Authorization') || '';
+                titleRequestHeaders['Cookie'] = request.headers.get('Cookie') || '';
+              }
+
               const titleResponse = await fetch(`${request.headers.get('origin') || 'http://localhost:3000'}/api/generate-title`, {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': request.headers.get('Authorization') || '',
-                  'Cookie': request.headers.get('Cookie') || '',
-                },
-                body: JSON.stringify({
-                  userMessage: message,
-                  assistantResponse: bestResponse,
-                  conversationId: conversation.id,
-                }),
+                headers: titleRequestHeaders,
+                body: JSON.stringify(titleRequestBody),
               });
               
               if (titleResponse.ok) {

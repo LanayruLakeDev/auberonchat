@@ -7,11 +7,16 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (userError || !user) {
+    // Check for guest user with API key
+    const guestApiKey = request.headers.get('X-Guest-API-Key');
+    const isGuest = !!guestApiKey;
+
+    // For authenticated users, keep existing validation
+    if (!isGuest && (userError || !user)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { conversationId, message, model, attachments = [] } = await request.json();
+    const { conversationId, message, model, attachments = [], isGuest: bodyIsGuest } = await request.json();
 
     if ((!message || message.trim() === '') && attachments.length === 0) {
       return NextResponse.json({ error: 'Message or attachments required' }, { status: 400 });
@@ -21,89 +26,125 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Model is required' }, { status: 400 });
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('openrouter_api_key')
-      .eq('id', user.id)
-      .single();
+    // Get API key based on user type
+    let openRouterApiKey: string;
+    
+    if (isGuest) {
+      // For guest users, use the API key from header
+      if (!guestApiKey) {
+        return NextResponse.json({ error: 'OpenRouter API key not provided' }, { status: 400 });
+      }
+      openRouterApiKey = guestApiKey;
+    } else {
+      // For authenticated users, get API key from profile (existing logic)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('openrouter_api_key')
+        .eq('id', user!.id)
+        .single();
 
-    if (!profile?.openrouter_api_key) {
-      return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
+      if (!profile?.openrouter_api_key) {
+        return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
+      }
+      openRouterApiKey = profile.openrouter_api_key;
     }
 
     let conversation = null;
     let messages = [];
 
-    if (conversationId) {
-      const { data: existingConversation } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('id', conversationId)
-        .eq('user_id', user.id)
-        .single();
-
-      if (existingConversation) {
-        conversation = existingConversation;
-        
-        const { data: existingMessages } = await supabase
-          .from('messages')
+    if (isGuest) {
+      // For guest users, we don't store conversations/messages in DB
+      // The client will handle conversation/message storage via localStorage
+      // We just need to process the chat request and return the response
+      
+      // If conversationId is provided, it means the guest wants to continue an existing conversation
+      // But since we don't have access to guest's localStorage here, we'll rely on the client
+      // to provide the conversation context if needed in future iterations
+      
+      // For now, we'll create a temporary conversation object for the response
+      conversation = {
+        id: conversationId || `guest-${Date.now()}`,
+        title: 'Guest Chat',
+        model,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      // Guest messages are handled client-side, so we start with empty array
+      messages = [];
+    } else {
+      // Existing authenticated user logic - unchanged
+      if (conversationId) {
+        const { data: existingConversation } = await supabase
+          .from('conversations')
           .select('*')
-          .eq('conversation_id', conversationId)
-          .order('created_at', { ascending: true });
+          .eq('id', conversationId)
+          .eq('user_id', user!.id)
+          .single();
 
-        messages = existingMessages || [];
+        if (existingConversation) {
+          conversation = existingConversation;
+          
+          const { data: existingMessages } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true });
+
+          messages = existingMessages || [];
+        }
       }
-    }
 
-    if (!conversation) {
-      const { data: newConversation, error: conversationError } = await supabase
-        .from('conversations')
+      if (!conversation) {
+        const { data: newConversation, error: conversationError } = await supabase
+          .from('conversations')
+          .insert({
+            user_id: user!.id,
+            title: 'New Chat',
+            model,
+          })
+          .select()
+          .single();
+
+        if (conversationError || !newConversation) {
+          return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 });
+        }
+
+        conversation = newConversation;
+      }
+
+      const { data: userMessage, error: messageError } = await supabase
+        .from('messages')
         .insert({
-          user_id: user.id,
-          title: 'New Chat',
-          model,
+          conversation_id: conversation.id,
+          role: 'user',
+          content: message || '',
         })
         .select()
         .single();
 
-      if (conversationError || !newConversation) {
-        return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 });
+      if (messageError || !userMessage) {
+        return NextResponse.json({ error: 'Failed to save user message' }, { status: 500 });
       }
 
-      conversation = newConversation;
-    }
+      // Save attachments if any
+      if (attachments.length > 0) {
+        const attachmentInserts = attachments.map((attachment: any) => ({
+          message_id: userMessage.id,
+          filename: attachment.filename,
+          file_type: attachment.file_type,
+          file_size: attachment.file_size,
+          file_url: attachment.file_url,
+        }));
 
-    const { data: userMessage, error: messageError } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversation.id,
-        role: 'user',
-        content: message || '',
-      })
-      .select()
-      .single();
+        const { error: attachmentError } = await supabase
+          .from('attachments')
+          .insert(attachmentInserts);
 
-    if (messageError || !userMessage) {
-      return NextResponse.json({ error: 'Failed to save user message' }, { status: 500 });
-    }
-
-    // Save attachments if any
-    if (attachments.length > 0) {
-      const attachmentInserts = attachments.map((attachment: any) => ({
-        message_id: userMessage.id,
-        filename: attachment.filename,
-        file_type: attachment.file_type,
-        file_size: attachment.file_size,
-        file_url: attachment.file_url,
-      }));
-
-      const { error: attachmentError } = await supabase
-        .from('attachments')
-        .insert(attachmentInserts);
-
-      if (attachmentError) {
-        console.error('Failed to save attachments:', attachmentError);
-        // Continue anyway, don't fail the entire request
+        if (attachmentError) {
+          console.error('Failed to save attachments:', attachmentError);
+          // Continue anyway, don't fail the entire request
+        }
       }
     }
 
@@ -223,7 +264,7 @@ export async function POST(request: NextRequest) {
 
     // Build chat messages array with proper attachment formatting
     const formattedMessages = await Promise.all(
-      messages.map(async (msg) => ({
+      messages.map(async (msg: any) => ({
         role: msg.role as 'user' | 'assistant' | 'system',
         content: await formatMessageContent(msg)
       }))
@@ -239,7 +280,7 @@ export async function POST(request: NextRequest) {
       }
     ];
 
-    const openRouter = new OpenRouterService(profile.openrouter_api_key);
+    const openRouter = new OpenRouterService(openRouterApiKey);
     
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -257,29 +298,44 @@ export async function POST(request: NextRequest) {
             request.headers.get('origin') || undefined
           );
 
-          await supabase
-            .from('messages')
-            .insert({
-              conversation_id: conversation.id,
-              role: 'assistant',
-              content: assistantResponse,
-            });
+          // Save assistant response for authenticated users only
+          if (!isGuest) {
+            await supabase
+              .from('messages')
+              .insert({
+                conversation_id: conversation.id,
+                role: 'assistant',
+                content: assistantResponse,
+              });
+          }
 
           // Generate title for new conversations after first response
           if (messages.length === 0) {
             try {
+              const titleRequestHeaders: Record<string, string> = {
+                'Content-Type': 'application/json',
+              };
+              
+              const titleRequestBody: any = {
+                userMessage: message,
+                assistantResponse,
+                conversationId: conversation.id,
+              };
+
+              if (isGuest) {
+                // For guest users, pass the API key and guest flag
+                titleRequestHeaders['X-Guest-API-Key'] = guestApiKey;
+                titleRequestBody.isGuest = true;
+              } else {
+                // For authenticated users, pass auth headers
+                titleRequestHeaders['Authorization'] = request.headers.get('Authorization') || '';
+                titleRequestHeaders['Cookie'] = request.headers.get('Cookie') || '';
+              }
+
               const titleResponse = await fetch(`${request.headers.get('origin') || 'http://localhost:3000'}/api/generate-title`, {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': request.headers.get('Authorization') || '',
-                  'Cookie': request.headers.get('Cookie') || '',
-                },
-                body: JSON.stringify({
-                  userMessage: message,
-                  assistantResponse,
-                  conversationId: conversation.id,
-                }),
+                headers: titleRequestHeaders,
+                body: JSON.stringify(titleRequestBody),
               });
               
               if (titleResponse.ok) {
@@ -307,17 +363,19 @@ export async function POST(request: NextRequest) {
             errorMessage = error.message;
           }
           
-          // Save error message as assistant response for user to see
-          try {
-            await supabase
-              .from('messages')
-              .insert({
-                conversation_id: conversation.id,
-                role: 'assistant',
-                content: `❌ **Error**: ${errorMessage}`,
-              });
-          } catch (dbError) {
-            console.error('Failed to save error message:', dbError);
+          // Save error message as assistant response for authenticated users only
+          if (!isGuest) {
+            try {
+              await supabase
+                .from('messages')
+                .insert({
+                  conversation_id: conversation.id,
+                  role: 'assistant',
+                  content: `❌ **Error**: ${errorMessage}`,
+                });
+            } catch (dbError) {
+              console.error('Failed to save error message:', dbError);
+            }
           }
           
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
