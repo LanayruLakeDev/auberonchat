@@ -96,23 +96,33 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     } else {
       console.log('⏸️ URL_EFFECT: No matching conversation or empty list');
     }
-  }, [conversations]);
-  const refreshConversations = async () => {
+  }, [conversations]);  const refreshConversations = async (targetUser?: any) => {
+    const currentUser = targetUser || user;
+    console.log('🔄 REFRESH_CONVERSATIONS: Starting, user:', currentUser?.is_guest ? 'guest' : 'authenticated');
     setIsLoadingConversations(true);
     try {
       // Check if user is authenticated
-      if (user && !user.is_guest) {
-        const response = await fetch('/api/conversations');
-        if (response.ok) {
+      if (currentUser && !currentUser.is_guest) {
+        console.log('🔄 REFRESH_CONVERSATIONS: Fetching from API for authenticated user');
+        const response = await fetch('/api/conversations');        if (response.ok) {
           const data = await response.json();
+          console.log('🔄 REFRESH_CONVERSATIONS: Got', data.conversations?.length || 0, 'conversations from API');
           setConversations(data.conversations || []);
+        } else {
+          console.error('🔄 REFRESH_CONVERSATIONS: API response not ok:', response.status);
+          // Don't clear conversations on API error - keep existing ones
+          if (response.status === 401) {
+            console.log('🔄 REFRESH_CONVERSATIONS: Unauthorized - user might need to re-authenticate');
+          }
         }
       } else {
         // Check if user is a guest
         const guestUser = LocalStorage.getUser();
+        console.log('🔄 REFRESH_CONVERSATIONS: Guest user found:', !!guestUser);
         if (guestUser && guestUser.is_guest) {
           // Load conversations from localStorage for guest users
           const localConversations = LocalStorage.getConversations();
+          console.log('🔄 REFRESH_CONVERSATIONS: Got', localConversations.length, 'conversations from localStorage');
           setConversations(localConversations);
         }
       }
@@ -184,9 +194,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       console.error('❌ REFRESH_MESSAGES: Error fetching messages:', error);
     }
   };
-
-  const refreshProfile = async () => {
+  const refreshProfile = async (targetUser?: any) => {
+    const currentUser = targetUser || user;
+    
+    // Only fetch profile for authenticated users
+    if (!currentUser || currentUser.is_guest) {
+      console.log('🔄 REFRESH_PROFILE: Skipping for guest user');
+      setProfile(null);
+      return;
+    }
+    
     try {
+      console.log('🔄 REFRESH_PROFILE: Fetching for authenticated user');
       const response = await fetch('/api/profile');
       if (response.ok) {
         const data = await response.json();
@@ -202,24 +221,30 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             setProfile(retryData.profile);
           }
         }
+      } else {
+        console.error('🔄 REFRESH_PROFILE: API error:', response.status);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
-  };
-  const refreshUser = async () => {
+  };const refreshUser = async () => {
+    console.log('🔄 REFRESH_USER: Starting');
     try {
       const supabase = createClient();
       const { data: { user }, error } = await supabase.auth.getUser();
       if (!error && user) {
+        console.log('🔄 REFRESH_USER: Found authenticated user:', user.email);
         setUser(user);
-        // Clear guest data when real user logs in
-        LocalStorage.clearGuestData();
+        // Don't clear guest data - preserve it for when user logs out
       } else {
+        console.log('🔄 REFRESH_USER: No authenticated user, checking for guest');
         // Check if we have a guest user, or create one
         let guestUser = LocalStorage.getUser();
         if (!guestUser) {
+          console.log('🔄 REFRESH_USER: No guest user, creating one');
           guestUser = LocalStorage.createGuestUser();
+        } else {
+          console.log('🔄 REFRESH_USER: Found existing guest user:', guestUser.display_name);
         }
         setUser(guestUser);
       }
@@ -336,21 +361,44 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       console.log('🆕 ADD_NEW_CONVERSATION: New conversation IDs:', Array.from(newSet));
       return newSet;
     });
-  };
-
-  useEffect(() => {
+  };  useEffect(() => {
     const initializeData = async () => {
       setIsLoading(true);
-      await Promise.all([
-        refreshConversations(),
-        refreshProfile(),
-        refreshUser(),
-      ]);
+      await refreshUser();
       setIsLoading(false);
+    };    // Listen for localStorage changes (for guest user updates)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user') {
+        console.log('🔄 STORAGE_CHANGE: User data changed in localStorage');
+        refreshUser();
+      }
     };
 
-    initializeData();
-  }, []);
+    // Listen for custom user change events (same tab)
+    const handleUserChange = (e: CustomEvent) => {
+      console.log('🔄 USER_CHANGE: User data changed via custom event:', e.detail);
+      refreshUser();
+    };    initializeData();
+    
+    // Add storage event listener
+    window.addEventListener('storage', handleStorageChange);
+    // Add custom event listener
+    window.addEventListener('auberonUserChange', handleUserChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auberonUserChange', handleUserChange as EventListener);
+    };
+  }, []);// Load conversations and profile when user changes
+  useEffect(() => {
+    if (user) {
+      console.log('🔄 USER_EFFECT: User changed, loading data for:', user.is_guest ? 'guest' : 'authenticated');
+      Promise.all([
+        refreshConversations(user),
+        refreshProfile(user),
+      ]);
+    }
+  }, [user]);
 
   useEffect(() => {
     console.log('🎯 ACTIVE_EFFECT: Active conversation changed to:', activeConversation?.id || 'null');
