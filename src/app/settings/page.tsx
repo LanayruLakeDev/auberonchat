@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatProvider, useChat } from '@/contexts/ChatContext';
 import { createClient } from '@/lib/supabase-client';
+import { LocalStorage } from '@/lib/localStorage';
 import { 
   Key, 
   Eye, 
@@ -33,9 +34,10 @@ interface SettingsSidebarProps {
   onToggleCollapse: () => void;
   onLogout: () => void;
   isLogoutLoading: boolean;
+  isGuest: boolean;
 }
 
-function SettingsSidebar({ activeSection, onSectionChange, isCollapsed, onToggleCollapse, onLogout, isLogoutLoading }: SettingsSidebarProps) {
+function SettingsSidebar({ activeSection, onSectionChange, isCollapsed, onToggleCollapse, onLogout, isLogoutLoading, isGuest }: SettingsSidebarProps) {
   const settingsSections = [
     { id: 'profile' as SettingsSection, label: 'Profile', icon: User, color: 'blue' },
     { id: 'api' as SettingsSection, label: 'API Keys', icon: Key, color: 'yellow' },
@@ -166,7 +168,10 @@ function SettingsSidebar({ activeSection, onSectionChange, isCollapsed, onToggle
                   <LogOut size={16} />
                 )}
                 <span className="text-sm font-medium">
-                  {isLogoutLoading ? 'Logging out...' : 'Logout'}
+                  {isLogoutLoading 
+                    ? (isGuest ? 'Switching...' : 'Logging out...') 
+                    : (isGuest ? 'Switch to Online Account' : 'Logout')
+                  }
                 </span>
               </motion.button>
               
@@ -233,7 +238,29 @@ function SettingsSidebar({ activeSection, onSectionChange, isCollapsed, onToggle
 }
 
 function ProfileSection() {
-  const { profile } = useChat();
+  const { profile, user, isGuest, refreshUser } = useChat();
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [guestName, setGuestName] = useState(user?.display_name || 'Guest User');
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  const handleSaveName = async () => {
+    if (!guestName.trim()) {
+      alert('Please enter a valid name');
+      return;
+    }
+
+    setIsSavingName(true);
+    try {
+      LocalStorage.updateGuestName(guestName.trim());
+      await refreshUser();
+      setIsEditingName(false);
+    } catch (error) {
+      console.error('Error saving name:', error);
+      alert('Failed to save name');
+    } finally {
+      setIsSavingName(false);
+    }
+  };
 
   return (
     <motion.div
@@ -241,49 +268,130 @@ function ProfileSection() {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      {profile && (
-        <div className="glass-strong rounded-2xl p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-white/60 mb-2">
-                Email Address
-              </label>
-              <div className="px-4 py-3 glass rounded-xl text-white font-mono text-sm">
-                {profile.email}
+      <div className="glass-strong rounded-2xl p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {isGuest ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-white/60 mb-2">
+                  Guest Name
+                </label>
+                {isEditingName ? (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      className="w-full px-4 py-3 glass rounded-xl text-white bg-white/5 border border-white/10 focus:border-white/20 focus:ring-2 focus:ring-white/10 font-mono text-sm"
+                      placeholder="Enter your name"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSaveName();
+                        } else if (e.key === 'Escape') {
+                          setIsEditingName(false);
+                          setGuestName(user?.display_name || 'Guest User');
+                        }
+                      }}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveName}
+                        disabled={isSavingName}
+                        className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm disabled:opacity-50"
+                      >
+                        {isSavingName ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsEditingName(false);
+                          setGuestName(user?.display_name || 'Guest User');
+                        }}
+                        className="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="px-4 py-3 glass rounded-xl text-white font-mono text-sm flex-1">
+                      {user?.display_name || 'Guest User'}
+                    </div>
+                    <button
+                      onClick={() => setIsEditingName(true)}
+                      className="px-3 py-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-md text-sm"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                )}
+                <p className="text-xs text-white/40 mt-1">
+                  Your guest profile name. Data is stored locally on this device. Changing this will create a separate data profile.
+                </p>
               </div>
-              <p className="text-xs text-white/40 mt-1">
-                This is your login email and cannot be changed.
-              </p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-white/60 mb-2">
-                Account Status
-              </label>
-              <div className="px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-2 bg-green-500/20 text-green-400 border border-green-500/30">
-                <CheckCircle size={16} />
-                Active
+              
+              <div>
+                <label className="block text-sm font-medium text-white/60 mb-2">
+                  Account Type
+                </label>
+                <div className="px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-2 bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                  <User size={16} />
+                  Guest Mode
+                </div>
+                <p className="text-xs text-white/40 mt-1">
+                  All your data is stored locally. Sign up for cloud sync and backup.
+                </p>
               </div>
-            </div>
-          </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-white/60 mb-2">
+                  Email Address
+                </label>
+                <div className="px-4 py-3 glass rounded-xl text-white font-mono text-sm">
+                  {profile?.email}
+                </div>
+                <p className="text-xs text-white/40 mt-1">
+                  This is your login email and cannot be changed.
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-white/60 mb-2">
+                  Account Status
+                </label>
+                <div className="px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-2 bg-green-500/20 text-green-400 border border-green-500/30">
+                  <CheckCircle size={16} />
+                  Active
+                </div>
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
     </motion.div>
   );
 }
 
 function ApiKeysSection() {
-  const { profile, refreshProfile } = useChat();
+  const { profile, refreshProfile, isGuest } = useChat();
   const [apiKey, setApiKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
-    if (profile?.openrouter_api_key) {
+    if (isGuest) {
+      // Load API key from localStorage for guests
+      const guestApiKey = LocalStorage.getApiKey();
+      if (guestApiKey) {
+        setApiKey(guestApiKey);
+      }
+    } else if (profile?.openrouter_api_key) {
       setApiKey(profile.openrouter_api_key);
     }
-  }, [profile]);
+  }, [profile, isGuest]);
 
   const handleSave = async () => {
     if (!apiKey.trim()) {
@@ -295,25 +403,32 @@ function ApiKeysSection() {
     setSaveStatus('saving');
     
     try {
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          openrouter_api_key: apiKey.trim(),
-        }),
-      });
+      if (isGuest) {
+        // Save to localStorage for guests
+        LocalStorage.setApiKey(apiKey.trim());
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      } else {
+        // Save to profile for authenticated users
+        const response = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            openrouter_api_key: apiKey.trim(),
+          }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save API key');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to save API key');
+        }
+
+        await refreshProfile();
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
       }
-
-      await refreshProfile();
-      setSaveStatus('saved');
-      
-      setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) {
       console.error('Error saving API key:', error);
       setSaveStatus('error');
@@ -506,13 +621,20 @@ function SettingsPageContent() {
   const [isLogoutLoading, setIsLogoutLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+  const { user, isGuest } = useChat();
 
   const handleLogout = async () => {
     setIsLogoutLoading(true);
     try {
-      await supabase.auth.signOut();
-      router.push('/login');
-      router.refresh();
+      if (isGuest) {
+        // For guests, just redirect to login (don't clear local data)
+        router.push('/login');
+      } else {
+        // For authenticated users, sign out properly
+        await supabase.auth.signOut();
+        router.push('/login');
+        router.refresh();
+      }
     } catch (error) {
       console.error('Error logging out:', error);
     } finally {
@@ -559,6 +681,7 @@ function SettingsPageContent() {
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         onLogout={handleLogout}
         isLogoutLoading={isLogoutLoading}
+        isGuest={isGuest}
       />
 
       <div className="flex-1 flex flex-col min-w-0">

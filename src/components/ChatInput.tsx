@@ -172,12 +172,11 @@ export function ChatInput() {  const {
         attachments: messageAttachments,
         created_at: new Date().toISOString()
       };
-      
-      LocalStorage.addMessage(conversationId, userMessageObj);
+        LocalStorage.addMessage(conversationId, userMessageObj);
       await refreshMessages(conversationId);
 
       // Check if guest has API key for real responses
-      const guestApiKey = localStorage.getItem('guest_openrouter_api_key');
+      const guestApiKey = LocalStorage.getApiKey();
       
       if (guestApiKey) {
         // Make real API call
@@ -559,12 +558,11 @@ Click the Settings button to add your API key!`,
         attachments: messageAttachments,
         created_at: new Date().toISOString()
       };
-      
-      LocalStorage.addMessage(conversationId, userMessageObj);
+        LocalStorage.addMessage(conversationId, userMessageObj);
       await refreshMessages(conversationId);
 
       // Check if guest has API key for real responses
-      const guestApiKey = localStorage.getItem('guest_openrouter_api_key');
+      const guestApiKey = LocalStorage.getApiKey();
       
       if (guestApiKey) {
         // Make real consensus API call

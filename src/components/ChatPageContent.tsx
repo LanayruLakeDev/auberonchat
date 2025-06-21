@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import { useChat } from '@/contexts/ChatContext';
 import { ChatSidebar } from '@/components/ChatSidebar';
 import { ChatMessages } from '@/components/ChatMessages';
 import { ChatInput } from '@/components/ChatInput';
-import { SettingsModal } from '@/components/SettingsModal';
 import { useDynamicTitle } from '@/lib/useDynamicTitle';
+import { LocalStorage } from '@/lib/localStorage';
 import { Key, Sparkles } from 'lucide-react';
 
 interface ChatPageContentProps {
@@ -15,27 +16,24 @@ interface ChatPageContentProps {
 }
 
 export function ChatPageContent({ chatId }: ChatPageContentProps) {
-  const { profile, isLoading, conversations, setActiveConversation, activeConversation, user } = useChat();
-  const [showSettings, setShowSettings] = useState(false);
+  const { profile, isLoading, conversations, setActiveConversation, activeConversation, user, isGuest } = useChat();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const router = useRouter();
   
   useDynamicTitle(activeConversation);
-
   useEffect(() => {
     if (!isLoading) {
-      // For authenticated users - require API key
-      if (profile && !profile.openrouter_api_key && !user?.is_guest) {
-        setShowSettings(true);
-      }
-      // For guest users - prompt for API key if not in localStorage
-      else if (user?.is_guest) {
-        const guestApiKey = localStorage.getItem('guest_openrouter_api_key');
-        if (!guestApiKey) {
-          setShowSettings(true);
-        }
+      // Check if user needs to set up API key - redirect to settings
+      const needsApiKey = isGuest 
+        ? !LocalStorage.getApiKey()
+        : !profile?.openrouter_api_key;
+        
+      if (needsApiKey) {
+        // Redirect to settings page for API key setup
+        router.push('/settings');
       }
     }
-  }, [profile, isLoading, user]);
+  }, [profile, isLoading, user, isGuest, router]);
 
   if (isLoading) {
     return (
@@ -80,14 +78,8 @@ export function ChatPageContent({ chatId }: ChatPageContentProps) {
         className="flex-1 flex flex-col relative"
       >
         <ChatMessages isSidebarCollapsed={isSidebarCollapsed} />
-        
-        <ChatInput />
+          <ChatInput />
       </motion.div>
-
-      <SettingsModal
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-      />
     </motion.div>
   );
 }

@@ -12,14 +12,21 @@ export interface LocalUser {
 
 const STORAGE_KEYS = {
   USER: 'auberon_local_user',
-  CONVERSATIONS: 'auberon_conversations',
-  MESSAGES: 'auberon_messages',
-  PROFILE: 'auberon_profile',
+  CONVERSATIONS: (userId: string) => `auberon_conversations_${userId}`,
+  MESSAGES: (userId: string) => `auberon_messages_${userId}`,
+  PROFILE: (userId: string) => `auberon_profile_${userId}`,
+  API_KEY: (userId: string) => `auberon_api_key_${userId}`,
   LAST_SYNC: 'auberon_last_sync'
 };
 
 // User management
 export const LocalStorage = {
+  // Helper to get current user ID
+  getCurrentUserId: (): string | null => {
+    const user = LocalStorage.getUser();
+    return user?.id || null;
+  },
+
   // User operations
   setUser: (user: LocalUser): void => {
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
@@ -32,7 +39,6 @@ export const LocalStorage = {
   clearUser: (): void => {
     localStorage.removeItem(STORAGE_KEYS.USER);
   },
-
   createGuestUser: (): LocalUser => {
     const guestUser = {
       id: generateId(),
@@ -45,23 +51,39 @@ export const LocalStorage = {
     return guestUser;
   },
 
+  updateGuestName: (newName: string): LocalUser | null => {
+    const user = LocalStorage.getUser();
+    if (user?.is_guest) {
+      const updatedUser = { ...user, display_name: newName };
+      LocalStorage.setUser(updatedUser);
+      return updatedUser;
+    }
+    return null;
+  },
+
   clearGuestData: (): void => {
     const user = LocalStorage.getUser();
     if (user?.is_guest) {
+      const userId = user.id;
       localStorage.removeItem(STORAGE_KEYS.USER);
-      localStorage.removeItem(STORAGE_KEYS.CONVERSATIONS);
-      localStorage.removeItem(STORAGE_KEYS.MESSAGES);
-      localStorage.removeItem(STORAGE_KEYS.PROFILE);
+      localStorage.removeItem(STORAGE_KEYS.CONVERSATIONS(userId));
+      localStorage.removeItem(STORAGE_KEYS.MESSAGES(userId));
+      localStorage.removeItem(STORAGE_KEYS.PROFILE(userId));
+      localStorage.removeItem(STORAGE_KEYS.API_KEY(userId));
+    }
+  },
+  // Conversation operations
+  setConversations: (conversations: Conversation[]): void => {
+    const userId = LocalStorage.getCurrentUserId();
+    if (userId) {
+      localStorage.setItem(STORAGE_KEYS.CONVERSATIONS(userId), JSON.stringify(conversations));
     }
   },
 
-  // Conversation operations
-  setConversations: (conversations: Conversation[]): void => {
-    localStorage.setItem(STORAGE_KEYS.CONVERSATIONS, JSON.stringify(conversations));
-  },
-
   getConversations: (): Conversation[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.CONVERSATIONS);
+    const userId = LocalStorage.getCurrentUserId();
+    if (!userId) return [];
+    const data = localStorage.getItem(STORAGE_KEYS.CONVERSATIONS(userId));
     return data ? JSON.parse(data) : [];
   },
 
@@ -86,12 +108,14 @@ export const LocalStorage = {
     // Also delete associated messages
     LocalStorage.deleteMessagesByConversation(id);
   },
-
   // Message operations
   setMessages: (conversationId: string, messages: Message[]): void => {
     const allMessages = LocalStorage.getAllMessages();
     allMessages[conversationId] = messages;
-    localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(allMessages));
+    const userId = LocalStorage.getCurrentUserId();
+    if (userId) {
+      localStorage.setItem(STORAGE_KEYS.MESSAGES(userId), JSON.stringify(allMessages));
+    }
   },
 
   getMessages: (conversationId: string): Message[] => {
@@ -100,7 +124,9 @@ export const LocalStorage = {
   },
 
   getAllMessages: (): Record<string, Message[]> => {
-    const data = localStorage.getItem(STORAGE_KEYS.MESSAGES);
+    const userId = LocalStorage.getCurrentUserId();
+    if (!userId) return {};
+    const data = localStorage.getItem(STORAGE_KEYS.MESSAGES(userId));
     return data ? JSON.parse(data) : {};
   },
 
@@ -127,17 +153,38 @@ export const LocalStorage = {
   deleteMessagesByConversation: (conversationId: string): void => {
     const allMessages = LocalStorage.getAllMessages();
     delete allMessages[conversationId];
-    localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(allMessages));
+    const userId = LocalStorage.getCurrentUserId();
+    if (userId) {
+      localStorage.setItem(STORAGE_KEYS.MESSAGES(userId), JSON.stringify(allMessages));
+    }
   },
-
   // Profile operations
   setProfile: (profile: Profile): void => {
-    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+    const userId = LocalStorage.getCurrentUserId();
+    if (userId) {
+      localStorage.setItem(STORAGE_KEYS.PROFILE(userId), JSON.stringify(profile));
+    }
   },
 
   getProfile: (): Profile | null => {
-    const data = localStorage.getItem(STORAGE_KEYS.PROFILE);
+    const userId = LocalStorage.getCurrentUserId();
+    if (!userId) return null;
+    const data = localStorage.getItem(STORAGE_KEYS.PROFILE(userId));
     return data ? JSON.parse(data) : null;
+  },
+
+  // API Key operations
+  setApiKey: (apiKey: string): void => {
+    const userId = LocalStorage.getCurrentUserId();
+    if (userId) {
+      localStorage.setItem(STORAGE_KEYS.API_KEY(userId), apiKey);
+    }
+  },
+
+  getApiKey: (): string | null => {
+    const userId = LocalStorage.getCurrentUserId();
+    if (!userId) return null;
+    return localStorage.getItem(STORAGE_KEYS.API_KEY(userId));
   },
 
   // Sync operations
@@ -148,11 +195,14 @@ export const LocalStorage = {
   getLastSync: (): string | null => {
     return localStorage.getItem(STORAGE_KEYS.LAST_SYNC);
   },
-
   // Utility operations
   clearAll: (): void => {
-    Object.values(STORAGE_KEYS).forEach(key => {
-      localStorage.removeItem(key);
+    // Clear all localStorage keys that start with 'auberon_'
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+      if (key.startsWith('auberon_')) {
+        localStorage.removeItem(key);
+      }
     });
   },
 
@@ -166,11 +216,15 @@ export const LocalStorage = {
       lastSync: LocalStorage.getLastSync()
     };
   },
-
   importAllData: (data: any): void => {
     if (data.user) LocalStorage.setUser(data.user);
     if (data.conversations) LocalStorage.setConversations(data.conversations);
-    if (data.messages) localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(data.messages));
+    if (data.messages) {
+      const userId = LocalStorage.getCurrentUserId();
+      if (userId) {
+        localStorage.setItem(STORAGE_KEYS.MESSAGES(userId), JSON.stringify(data.messages));
+      }
+    }
     if (data.profile) LocalStorage.setProfile(data.profile);
     if (data.lastSync) LocalStorage.setLastSync(data.lastSync);
   }

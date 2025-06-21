@@ -5,7 +5,6 @@ import Link from 'next/link';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from '@/contexts/ChatContext';
-import { SettingsModal } from '@/components/SettingsModal';
 import { Plus, MessageSquare, Trash2, Settings, ChevronLeft, ChevronRight, X, Check, Users, Loader2 } from 'lucide-react';
 
 interface ChatSidebarProps {
@@ -27,7 +26,6 @@ export function ChatSidebar({ isCollapsed, onToggleCollapse }: ChatSidebarProps)
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
 
   const handleDeleteClick = (e: React.MouseEvent, conversationId: string) => {
     e.stopPropagation();
@@ -384,10 +382,9 @@ export function ChatSidebar({ isCollapsed, onToggleCollapse }: ChatSidebarProps)
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
                 >
-                  {user?.is_guest ? (
-                    // Guest users get modal
-                    <motion.button
-                      onClick={() => setShowSettings(true)}
+                  {/* Both guests and authenticated users get full settings page */}
+                  <Link href="/settings">
+                    <motion.div
                       className="w-full flex items-center gap-2 text-white/50 hover:text-white/80 px-2 py-2 rounded-md hover:bg-white/5 transition-colors text-xs"
                       whileHover={{ scale: 1.02, x: 4 }}
                       whileTap={{ scale: 0.98 }}
@@ -397,23 +394,8 @@ export function ChatSidebar({ isCollapsed, onToggleCollapse }: ChatSidebarProps)
                     >
                       <Settings size={14} />
                       Settings
-                    </motion.button>
-                  ) : (
-                    // Authenticated users get full settings page
-                    <Link href="/settings">
-                      <motion.div
-                        className="w-full flex items-center gap-2 text-white/50 hover:text-white/80 px-2 py-2 rounded-md hover:bg-white/5 transition-colors text-xs"
-                        whileHover={{ scale: 1.02, x: 4 }}
-                        whileTap={{ scale: 0.98 }}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.6 }}
-                      >
-                        <Settings size={14} />
-                        Settings
-                      </motion.div>
-                    </Link>
-                  )}
+                    </motion.div>
+                  </Link>
                 </motion.div>
               </>
             )}
@@ -421,13 +403,6 @@ export function ChatSidebar({ isCollapsed, onToggleCollapse }: ChatSidebarProps)
         )}
       </AnimatePresence>
 
-      {/* Settings Modal - Only for guests */}
-      {user?.is_guest && (
-        <SettingsModal
-          isOpen={showSettings}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
     </>
   );
 } 
