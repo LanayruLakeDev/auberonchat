@@ -23,11 +23,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   }, [profile]);
 
   const handleSave = async () => {
-    if (!apiKey.trim()) {
-      alert('Please enter your OpenRouter API key');
-      return;
-    }
-
     setIsLoading(true);
     try {
       const response = await fetch('/api/profile', {
@@ -36,7 +31,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          openrouter_api_key: apiKey.trim(),
+          openrouter_api_key: apiKey.trim() || null, // Allow empty/null to clear the API key
         }),
       });
 
@@ -132,7 +127,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     type={showApiKey ? 'text' : 'password'}
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Enter your OpenRouter API key"
+                    placeholder="Enter your OpenRouter API key or leave empty to use default provider"
                     className="w-full input-glass pr-12 text-white placeholder-white/40"
                   />
                   <motion.button
@@ -145,6 +140,17 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
                   </motion.button>
                 </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <motion.button
+                    type="button"
+                    onClick={() => setApiKey('')}
+                    className="text-xs bg-purple-500/20 text-purple-300 hover:text-purple-200 px-3 py-1 rounded-lg border border-purple-400/30 hover:border-purple-400/50 transition-all"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Use Default Provider
+                  </motion.button>
+                </div>
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -152,7 +158,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   className="text-xs text-white/50 mt-2 flex items-center gap-2"
                 >
                   <Shield size={12} />
-                  Your API key is stored securely and only used for OpenRouter requests.
+                  Leave empty to use the default AI provider, or add your OpenRouter API key for full access to all models.
                 </motion.p>
               </div>
 
@@ -232,7 +238,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               
               <motion.button
                 onClick={handleSave}
-                disabled={isLoading || !apiKey.trim()}
+                disabled={isLoading}
                 className="btn-primary px-6 py-3 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
