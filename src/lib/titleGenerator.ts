@@ -1,41 +1,24 @@
-export class TitleGenerator {
-  private apiKey: string;
+import { createAIService } from './openrouter';
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
+export class TitleGenerator {
+  private userApiKey?: string;
+
+  constructor(userApiKey?: string) {
+    this.userApiKey = userApiKey;
   }
 
   async generateTitle(userMessage: string, assistantResponse?: string): Promise<string> {
     try {
       const prompt = this.buildTitlePrompt(userMessage, assistantResponse);
+      const aiService = createAIService(this.userApiKey);
       
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-          'X-Title': 'Auberon Chat Title Generator',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.0-flash-lite-001', // Fast and cheap model for title generation
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: 20,
-          temperature: 0.3,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`OpenRouter API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const generatedTitle = data.choices?.[0]?.message?.content?.trim();
+      // Use a fast model for title generation
+      const model = 'google/gemini-2.0-flash-lite-001';
+      
+      const generatedTitle = await aiService.createChatCompletion(
+        model,
+        [{ role: 'user', content: prompt }]
+      );
       
       if (!generatedTitle) {
         throw new Error('No title generated');

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
-import { OpenRouterService } from '@/lib/openrouter';
+import { createAIService } from '@/lib/openrouter';
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,8 +49,8 @@ export async function PUT(request: NextRequest) {
 
     // Validate API key first
     console.log('Validating API key...');
-    const openRouter = new OpenRouterService(openrouter_api_key);
-    const isValid = await openRouter.validateApiKey();
+    const aiService = createAIService(openrouter_api_key);
+    const isValid = await aiService.validateApiKey();
 
     if (!isValid) {
       console.log('API key validation failed');

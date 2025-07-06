@@ -23,30 +23,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Get API key based on user type
-    let openRouterApiKey: string;
+    let userApiKey: string | undefined;
     
     if (isGuest) {
-      // For guest users, use the API key from header
-      if (!guestApiKey) {
-        return NextResponse.json({ error: 'OpenRouter API key not provided' }, { status: 400 });
-      }
-      openRouterApiKey = guestApiKey;
+      // For guest users, use the API key from header (if provided)
+      userApiKey = guestApiKey || undefined;
     } else {
-      // For authenticated users, get API key from profile (existing logic)
+      // For authenticated users, get API key from profile (if configured)
       const { data: profile } = await supabase
         .from('profiles')
         .select('openrouter_api_key')
         .eq('id', user!.id)
         .single();
 
-      if (!profile?.openrouter_api_key) {
-        return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
-      }
-      openRouterApiKey = profile.openrouter_api_key;
+      userApiKey = profile?.openrouter_api_key || undefined;
     }
 
     // Generate the title
-    const titleGenerator = new TitleGenerator(openRouterApiKey);
+    const titleGenerator = new TitleGenerator(userApiKey);
     const generatedTitle = await titleGenerator.generateTitle(userMessage, assistantResponse);
 
     // Update the conversation with the new title (authenticated users only)

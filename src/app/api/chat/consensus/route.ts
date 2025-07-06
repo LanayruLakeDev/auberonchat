@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
-import { OpenRouterService } from '@/lib/openrouter';
+import { createAIService, isModelSupportedByChutes } from '@/lib/openrouter';
 import { ConsensusResponse } from '@/types/chat';
 
 export async function POST(request: NextRequest) {
@@ -28,26 +28,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Get API key based on user type
-    let openRouterApiKey: string;
+    let userApiKey: string | undefined;
     
     if (isGuest) {
-      // For guest users, use the API key from header
-      if (!guestApiKey) {
-        return NextResponse.json({ error: 'OpenRouter API key not provided' }, { status: 400 });
-      }
-      openRouterApiKey = guestApiKey;
+      // For guest users, use the API key from header (if provided)
+      userApiKey = guestApiKey || undefined;
     } else {
-      // For authenticated users, get API key from profile (existing logic)
+      // For authenticated users, get API key from profile (if configured)
       const { data: profile } = await supabase
         .from('profiles')
         .select('openrouter_api_key')
         .eq('id', user!.id)
         .single();
 
-      if (!profile?.openrouter_api_key) {
-        return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 400 });
+      userApiKey = profile?.openrouter_api_key || undefined;
+    }
+
+    // Check if all models are supported when no user API key is provided
+    if (!userApiKey) {
+      const unsupportedModels = models.filter((model: string) => !isModelSupportedByChutes(model));
+      if (unsupportedModels.length > 0) {
+        return NextResponse.json({ 
+          error: `Models ${unsupportedModels.join(', ')} require an OpenRouter API key. Please add your OpenRouter API key in settings, or choose different models.` 
+        }, { status: 400 });
       }
-      openRouterApiKey = profile.openrouter_api_key;
     }
 
     let conversation = null;
@@ -275,7 +279,7 @@ export async function POST(request: NextRequest) {
       content: currentMessageContent,
     });
 
-    const openRouter = new OpenRouterService(openRouterApiKey);
+    const aiService = createAIService(userApiKey);
 
     // Create a readable stream for Server-Sent Events
     const encoder = new TextEncoder();
@@ -302,7 +306,7 @@ export async function POST(request: NextRequest) {
             try {
               let fullResponse = '';
               
-              await openRouter.createChatCompletion(
+              await aiService.createChatCompletion(
                 model,
                 conversationHistory,
                 (chunk: string) => {
@@ -400,8 +404,10 @@ export async function POST(request: NextRequest) {
               };
 
               if (isGuest) {
-                // For guest users, pass the API key and guest flag
-                titleRequestHeaders['X-Guest-API-Key'] = guestApiKey;
+                // For guest users, pass the API key if available
+                if (userApiKey) {
+                  titleRequestHeaders['X-Guest-API-Key'] = userApiKey;
+                }
                 titleRequestBody.isGuest = true;
               } else {
                 // For authenticated users, pass auth headers
