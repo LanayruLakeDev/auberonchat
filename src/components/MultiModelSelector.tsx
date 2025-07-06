@@ -34,6 +34,7 @@ export function MultiModelSelector({
       'deepseek': '/logos/deepseek.svg',
       'x-ai': '/logos/x-ai.svg',
       'qwen': '/logos/qwen.svg',
+      'nousresearch': '/logos/nousresearch.svg',
     };
     return providerLogos[provider.toLowerCase()] || null;
   };

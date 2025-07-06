@@ -25,6 +25,7 @@ const CHUTES_AVAILABLE_MODELS: string[] = [
   'Qwen/QwQ-32B',
   'Qwen/Qwen2.5-VL-32B-Instruct',
   'Qwen/Qwen3-235B-A22B',
+  'NousResearch/DeepHermes-3-Mistral-24B-Preview',
 ];
 
 export class OpenRouterService {
