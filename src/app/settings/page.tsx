@@ -656,48 +656,82 @@ function ApiKeysSection() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
                 onClick={() => setShowDeleteModal(false)}
               >
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                  className="glass-strong rounded-2xl p-6 max-w-md w-full mx-4"
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="glass-strong rounded-3xl max-w-md w-full p-8 relative border border-white/20"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-3xl"></div>
+                  
+                  <div className="flex items-start gap-4 mb-6 relative z-10">
+                    <div className="w-12 h-12 glass rounded-2xl flex items-center justify-center flex-shrink-0">
                       <XCircle size={24} className="text-purple-400" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-white mb-2">
+                      <h3 className="text-xl font-bold text-white mb-2">
                         Switch to System Provider?
                       </h3>
-                      <p className="text-white/70 text-sm mb-6">
+                      <p className="text-white/70 text-sm leading-relaxed">
                         This will delete your personal API key and use our system-provided AI models instead. 
                         You can always add your API key back later for access to additional models.
                       </p>
-                      <div className="flex gap-3">
-                        <motion.button
-                          onClick={handleDelete}
-                          disabled={isDeleting}
-                          className="flex-1 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2.5 rounded-xl font-medium transition-all disabled:opacity-50"
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          {isDeleting ? 'Switching...' : 'Yes, Switch'}
-                        </motion.button>
-                        <motion.button
-                          onClick={() => setShowDeleteModal(false)}
-                          className="flex-1 bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl font-medium transition-all"
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          Cancel
-                        </motion.button>
-                      </div>
                     </div>
+                  </div>
+
+                  <div className="flex gap-3 relative z-10">
+                    <motion.button
+                      onClick={() => setShowDeleteModal(false)}
+                      className="btn-ghost flex-1 px-4 py-3"
+                      disabled={isDeleting}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      Cancel
+                    </motion.button>
+                    
+                    <motion.button
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-1 flex items-center justify-center gap-2"
+                      whileHover={!isDeleting ? { scale: 1.02 } : {}}
+                      whileTap={!isDeleting ? { scale: 0.98 } : {}}
+                    >
+                      <AnimatePresence mode="wait">
+                        {isDeleting ? (
+                          <motion.div
+                            key="deleting"
+                            initial={{ opacity: 0, rotate: -90 }}
+                            animate={{ opacity: 1, rotate: 0 }}
+                            exit={{ opacity: 0, rotate: 90 }}
+                            className="flex items-center gap-2"
+                          >
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                              className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                            />
+                            Switching...
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="switch"
+                            initial={{ opacity: 0, rotate: -90 }}
+                            animate={{ opacity: 1, rotate: 0 }}
+                            exit={{ opacity: 0, rotate: 90 }}
+                            className="flex items-center gap-2"
+                          >
+                            <XCircle size={16} />
+                            Yes, Switch
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.button>
                   </div>
                 </motion.div>
               </motion.div>
