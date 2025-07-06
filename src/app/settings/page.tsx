@@ -381,6 +381,7 @@ function ApiKeysSection() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     if (isGuest) {
@@ -395,10 +396,6 @@ function ApiKeysSection() {
   }, [profile, isGuest]);
 
   const handleDelete = async () => {
-    const confirmDelete = window.confirm('Are you sure you want to delete your API key? You will need to re-enter it to use AI models.');
-    
-    if (!confirmDelete) return;
-
     setIsDeleting(true);
     
     try {
@@ -406,6 +403,7 @@ function ApiKeysSection() {
         // Remove from localStorage for guests
         LocalStorage.removeApiKey();
         setApiKey('');
+        console.log('Guest API key removed from localStorage');
       } else {
         // Remove from profile for authenticated users
         const response = await fetch('/api/profile', {
@@ -425,7 +423,9 @@ function ApiKeysSection() {
 
         await refreshProfile();
         setApiKey('');
+        console.log('Authenticated user API key removed from database');
       }
+      setShowDeleteModal(false);
     } catch (error) {
       console.error('Error deleting API key:', error);
       alert(error instanceof Error ? error.message : 'Failed to delete API key');
@@ -624,7 +624,7 @@ function ApiKeysSection() {
 
             {(apiKey || profile?.openrouter_api_key) && (
               <motion.button
-                onClick={handleDelete}
+                onClick={() => setShowDeleteModal(true)}
                 disabled={isDeleting}
                 className="cursor-pointer flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-none bg-purple-500 hover:bg-purple-600 text-white"
                 whileHover={!isDeleting ? { scale: 1.02, y: -1 } : {}}
@@ -648,6 +648,61 @@ function ApiKeysSection() {
               </motion.button>
             )}
           </div>
+
+          {/* Delete Confirmation Modal */}
+          <AnimatePresence>
+            {showDeleteModal && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                onClick={() => setShowDeleteModal(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                  className="glass-strong rounded-2xl p-6 max-w-md w-full mx-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <XCircle size={24} className="text-purple-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-white mb-2">
+                        Switch to System Provider?
+                      </h3>
+                      <p className="text-white/70 text-sm mb-6">
+                        This will delete your personal API key and use our system-provided AI models instead. 
+                        You can always add your API key back later for access to additional models.
+                      </p>
+                      <div className="flex gap-3">
+                        <motion.button
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                          className="flex-1 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2.5 rounded-xl font-medium transition-all disabled:opacity-50"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          {isDeleting ? 'Switching...' : 'Yes, Switch'}
+                        </motion.button>
+                        <motion.button
+                          onClick={() => setShowDeleteModal(false)}
+                          className="flex-1 bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl font-medium transition-all"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          Cancel
+                        </motion.button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </motion.div>
