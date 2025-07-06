@@ -15,6 +15,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [apiKey, setApiKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showConfirmClear, setShowConfirmClear] = useState(false);
 
   useEffect(() => {
     if (profile?.openrouter_api_key) {
@@ -289,9 +290,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   {isLoading ? (
                     <motion.div
                       key="loading"
-                      initial={{ opacity: 0, rotate: -90 }}
-                      animate={{ opacity: 1, rotate: 0 }}
-                      exit={{ opacity: 0, rotate: 90 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
                       className="flex items-center gap-2"
                     >
                       <Loader2 size={16} className="animate-spin" />
@@ -300,9 +302,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   ) : (
                     <motion.div
                       key="save"
-                      initial={{ opacity: 0, rotate: -90 }}
-                      animate={{ opacity: 1, rotate: 0 }}
-                      exit={{ opacity: 0, rotate: 90 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
                       className="flex items-center gap-2"
                     >
                       <Save size={16} />
