@@ -43,28 +43,28 @@ export async function PUT(request: NextRequest) {
 
     const { openrouter_api_key } = await request.json();
 
-    if (!openrouter_api_key) {
-      return NextResponse.json({ error: 'OpenRouter API key is required' }, { status: 400 });
+    // Allow null/empty to clear the API key and use default provider
+    if (openrouter_api_key !== null && openrouter_api_key !== undefined && openrouter_api_key.trim()) {
+      // Validate API key only if provided
+      console.log('Validating API key...');
+      const aiService = createAIService(openrouter_api_key);
+      const isValid = await aiService.validateApiKey();
+
+      if (!isValid) {
+        console.log('API key validation failed');
+        return NextResponse.json({ error: 'Invalid OpenRouter API key' }, { status: 400 });
+      }
+      console.log('API key validation successful, updating profile...');
+    } else {
+      console.log('Clearing API key to use default provider...');
     }
-
-    // Validate API key first
-    console.log('Validating API key...');
-    const aiService = createAIService(openrouter_api_key);
-    const isValid = await aiService.validateApiKey();
-
-    if (!isValid) {
-      console.log('API key validation failed');
-      return NextResponse.json({ error: 'Invalid OpenRouter API key' }, { status: 400 });
-    }
-
-    console.log('API key validation successful, updating profile...');
     
     const { data: profile, error } = await supabase
       .from('profiles')
       .upsert({
         id: user.id,
         email: user.email,
-        openrouter_api_key,
+        openrouter_api_key: openrouter_api_key || null, // Store null for empty keys
         updated_at: new Date().toISOString(),
       })
       .select()

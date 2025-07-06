@@ -22,6 +22,47 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   }, [profile]);
 
+  const handleUseDefaultProvider = async () => {
+    setApiKey('');
+    
+    // Auto-save after clearing the API key
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          openrouter_api_key: null, // Clear the API key
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API Error:', errorData);
+        
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please log in again.');
+        } else if (response.status === 400) {
+          throw new Error(errorData.error || 'Failed to clear API key');
+        } else if (response.status === 500) {
+          throw new Error(`Server error: ${errorData.details || errorData.error || 'Unknown error'}`);
+        } else {
+          throw new Error(errorData.error || 'Failed to clear API key');
+        }
+      }
+
+      await refreshProfile();
+      // Don't close modal, let user see the change
+    } catch (error) {
+      console.error('Error clearing API key:', error);
+      alert(error instanceof Error ? error.message : 'Failed to clear API key');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     setIsLoading(true);
     try {
@@ -143,12 +184,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <div className="flex items-center gap-2 mt-2">
                   <motion.button
                     type="button"
-                    onClick={() => setApiKey('')}
-                    className="text-xs bg-purple-500/20 text-purple-300 hover:text-purple-200 px-3 py-1 rounded-lg border border-purple-400/30 hover:border-purple-400/50 transition-all"
+                    onClick={handleUseDefaultProvider}
+                    disabled={isLoading}
+                    className="text-xs bg-purple-500/20 text-purple-300 hover:text-purple-200 px-3 py-1 rounded-lg border border-purple-400/30 hover:border-purple-400/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    Use Default Provider
+                    {isLoading ? 'Clearing...' : 'Use Default Provider'}
                   </motion.button>
                 </div>
                 <motion.p
