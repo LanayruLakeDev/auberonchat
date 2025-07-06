@@ -5,31 +5,27 @@ const CHUTES_BASE_URL = 'https://api.chutes.ai/v1';
 
 // Model name mappings from OpenRouter format to Chutes format
 const OPENROUTER_TO_CHUTES_MODEL_MAP: Record<string, string> = {
-  // Google models
-  'google/gemini-2.0-flash-001': 'chutesai/gemini-2.0-flash',
-  'google/gemini-2.0-flash-lite-001': 'chutesai/gemini-2.0-flash-lite',
-  'google/gemini-2.5-flash-preview-05-20': 'chutesai/gemini-2.5-flash-preview',
-  'google/gemini-2.5-pro-preview': 'chutesai/gemini-2.5-pro-preview',
-  
-  // Meta LLaMA models - Correct Chutes AI naming with chutesai/ prefix
-  'meta-llama/llama-3.3-70b-instruct': 'chutesai/Llama-3.3-70B-Instruct',
-  'meta-llama/llama-4-scout': 'chutesai/Llama-4-Scout', 
+  // Meta LLaMA models - Confirmed Chutes AI naming
   'meta-llama/llama-4-maverick': 'chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8',
   
-  // DeepSeek models
-  'deepseek/deepseek-chat-v3-0324:free': 'chutesai/deepseek-chat-v3',
-  'deepseek/deepseek-r1-0528:free': 'chutesai/deepseek-r1',
-  
-  // X.AI Grok models
-  'x-ai/grok-3-beta': 'chutesai/grok-3-beta',
-  'x-ai/grok-3-mini-beta': 'chutesai/grok-3-mini-beta',
-  
-  // Mistral models
-  'mistralai/mistral-large-2412': 'chutesai/mistral-large-2412',
-  'mistralai/mistral-small-2412': 'chutesai/Mistral-Small-3.1-24B-Instruct-2503',
-  'mistralai/pixtral-large-2412': 'chutesai/pixtral-large-2412',
-  'mistralai/mistral-7b-instruct': 'chutesai/mistral-7b-instruct'
+  // DeepSeek models - Only ones that exist in OpenRouter
+  'deepseek/deepseek-chat-v3-0324:free': 'deepseek-ai/DeepSeek-V3-0324',
+  'deepseek/deepseek-r1-0528:free': 'deepseek-ai/DeepSeek-R1-0528',
 };
+
+// Confirmed Chutes AI available models (includes both mapped and Chutes-only models)
+const CHUTES_AVAILABLE_MODELS: string[] = [
+  // Models that exist in OpenRouter (will be mapped)
+  'meta-llama/llama-4-maverick',
+  'deepseek/deepseek-chat-v3-0324:free',
+  'deepseek/deepseek-r1-0528:free',
+  
+  // Chutes-only models (not available in OpenRouter)
+  'tngtech/DeepSeek-TNG-R1T2-Chimera',
+  'Qwen/QwQ-32B',
+  'Qwen/Qwen3-32B',
+  'Qwen/Qwen3-235B-A22B',
+];
 
 export class OpenRouterService {
   private apiKey: string;
@@ -64,14 +60,20 @@ export class OpenRouterService {
   }
 
   private mapModelName(model: string): string {
-    // If using Chutes AI and the model has a mapping, use the mapped name
-    if (this.useChutesAI && OPENROUTER_TO_CHUTES_MODEL_MAP[model]) {
-      const mappedName = OPENROUTER_TO_CHUTES_MODEL_MAP[model];
-      console.log(`[Chutes] Mapping OpenRouter model "${model}" to Chutes model "${mappedName}"`);
-      return mappedName;
+    // If using Chutes AI
+    if (this.useChutesAI) {
+      // Check if it's an OpenRouter model that needs mapping
+      if (OPENROUTER_TO_CHUTES_MODEL_MAP[model]) {
+        const mappedName = OPENROUTER_TO_CHUTES_MODEL_MAP[model];
+        console.log(`[Chutes] Mapping OpenRouter model "${model}" to Chutes model "${mappedName}"`);
+        return mappedName;
+      }
+      // If it's already a Chutes-only model name, use it as-is
+      console.log(`[Chutes] Using Chutes-only model: "${model}"`);
+      return model;
     }
-    // Otherwise use the original model name
-    console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Using model name as-is: "${model}"`);
+    // Otherwise use the original model name for OpenRouter
+    console.log(`[OpenRouter] Using model name as-is: "${model}"`);
     return model;
   }
 
@@ -209,17 +211,13 @@ export function createAIService(userApiKey?: string): OpenRouterService {
 
 // Helper function to check if a model is supported by Chutes AI
 export function isModelSupportedByChutes(model: string): boolean {
-  // Claude and OpenAI models are not supported by Chutes
-  if (model.startsWith('anthropic/') || model.startsWith('openai/')) {
-    return false;
-  }
-  
-  // Check if the model has a mapping or is supported
-  return OPENROUTER_TO_CHUTES_MODEL_MAP.hasOwnProperty(model) || 
-         !model.includes('/'); // Simple heuristic for already-mapped models
+  // Only models in our confirmed list are supported
+  return CHUTES_AVAILABLE_MODELS.includes(model);
 }
 
+// Get models list based on provider (OpenRouter vs Chutes)
 export const getPopularModels = (): string[] => [
+  // Full OpenRouter model list (when user has their own API key)
   'google/gemini-2.0-flash-001',
   'google/gemini-2.0-flash-lite-001',
   'google/gemini-2.5-flash-preview-05-20',
@@ -246,4 +244,7 @@ export const getPopularModels = (): string[] => [
   'mistralai/mistral-small-2412',
   'mistralai/pixtral-large-2412',
   'mistralai/mistral-7b-instruct'
-]; 
+];
+
+// Get Chutes available models (when using our provider)
+export const getChutesModels = (): string[] => CHUTES_AVAILABLE_MODELS; 
