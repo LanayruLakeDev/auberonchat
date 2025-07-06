@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     // Check if the model is supported by Chutes when no user API key is provided
     if (!userApiKey && !isModelSupportedByChutes(model)) {
       return NextResponse.json({ 
-        error: `Model ${model} requires an OpenRouter API key. Please add your OpenRouter API key in settings, or choose a different model.` 
+        error: `Model ${model} requires an OpenRouter API key. Please add your OpenRouter API key in settings, or choose a Chutes-supported model like Llama, Gemini, DeepSeek, or Grok.` 
       }, { status: 400 });
     }
 

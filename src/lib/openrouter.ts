@@ -6,29 +6,29 @@ const CHUTES_BASE_URL = 'https://api.chutes.ai/v1';
 // Model name mappings from OpenRouter format to Chutes format
 const OPENROUTER_TO_CHUTES_MODEL_MAP: Record<string, string> = {
   // Google models
-  'google/gemini-2.0-flash-001': 'gemini-2.0-flash',
-  'google/gemini-2.0-flash-lite-001': 'gemini-2.0-flash-lite',
-  'google/gemini-2.5-flash-preview-05-20': 'gemini-2.5-flash-preview',
-  'google/gemini-2.5-pro-preview': 'gemini-2.5-pro-preview',
+  'google/gemini-2.0-flash-001': 'chutesai/gemini-2.0-flash',
+  'google/gemini-2.0-flash-lite-001': 'chutesai/gemini-2.0-flash-lite',
+  'google/gemini-2.5-flash-preview-05-20': 'chutesai/gemini-2.5-flash-preview',
+  'google/gemini-2.5-pro-preview': 'chutesai/gemini-2.5-pro-preview',
   
-  // Meta LLaMA models
-  'meta-llama/llama-3.3-70b-instruct': 'llama-3.3-70b-instruct',
-  'meta-llama/llama-4-scout': 'llama-4-scout',
-  'meta-llama/llama-4-maverick': 'llama-4-maverick',
+  // Meta LLaMA models - Correct Chutes AI naming with chutesai/ prefix
+  'meta-llama/llama-3.3-70b-instruct': 'chutesai/Llama-3.3-70B-Instruct',
+  'meta-llama/llama-4-scout': 'chutesai/Llama-4-Scout', 
+  'meta-llama/llama-4-maverick': 'chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8',
   
   // DeepSeek models
-  'deepseek/deepseek-chat-v3-0324:free': 'deepseek-chat-v3',
-  'deepseek/deepseek-r1-0528:free': 'deepseek-r1',
+  'deepseek/deepseek-chat-v3-0324:free': 'chutesai/deepseek-chat-v3',
+  'deepseek/deepseek-r1-0528:free': 'chutesai/deepseek-r1',
   
   // X.AI Grok models
-  'x-ai/grok-3-beta': 'grok-3-beta',
-  'x-ai/grok-3-mini-beta': 'grok-3-mini-beta',
+  'x-ai/grok-3-beta': 'chutesai/grok-3-beta',
+  'x-ai/grok-3-mini-beta': 'chutesai/grok-3-mini-beta',
   
   // Mistral models
-  'mistralai/mistral-large-2412': 'mistral-large-2412',
-  'mistralai/mistral-small-2412': 'Mistral-Small-3.1-24B-Instruct-2503',
-  'mistralai/pixtral-large-2412': 'pixtral-large-2412',
-  'mistralai/mistral-7b-instruct': 'mistral-7b-instruct'
+  'mistralai/mistral-large-2412': 'chutesai/mistral-large-2412',
+  'mistralai/mistral-small-2412': 'chutesai/Mistral-Small-3.1-24B-Instruct-2503',
+  'mistralai/pixtral-large-2412': 'chutesai/pixtral-large-2412',
+  'mistralai/mistral-7b-instruct': 'chutesai/mistral-7b-instruct'
 };
 
 export class OpenRouterService {
@@ -66,9 +66,12 @@ export class OpenRouterService {
   private mapModelName(model: string): string {
     // If using Chutes AI and the model has a mapping, use the mapped name
     if (this.useChutesAI && OPENROUTER_TO_CHUTES_MODEL_MAP[model]) {
-      return OPENROUTER_TO_CHUTES_MODEL_MAP[model];
+      const mappedName = OPENROUTER_TO_CHUTES_MODEL_MAP[model];
+      console.log(`[Chutes] Mapping OpenRouter model "${model}" to Chutes model "${mappedName}"`);
+      return mappedName;
     }
     // Otherwise use the original model name
+    console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Using model name as-is: "${model}"`);
     return model;
   }
 
@@ -80,6 +83,9 @@ export class OpenRouterService {
   ): Promise<string> {
     try {
       const mappedModel = this.mapModelName(model);
+      
+      console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Creating chat completion with model: ${mappedModel}`);
+      console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] API URL: ${this.baseUrl}/chat/completions`);
       
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
@@ -99,8 +105,29 @@ export class OpenRouterService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Failed to create completion');
+        const errorText = await response.text();
+        let errorMessage = 'Failed to create completion';
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error?.message || errorData.message || errorMessage;
+        } catch {
+          // If not JSON, use the raw text
+          errorMessage = errorText || errorMessage;
+        }
+        
+        // Add more context to common errors
+        if (errorMessage.includes('Invalid API key') || errorMessage.includes('authentication')) {
+          if (this.useChutesAI) {
+            errorMessage = 'Chutes AI service authentication failed. Please contact the administrator.';
+          } else {
+            errorMessage = 'OpenRouter API key is invalid. Please check your API key in settings.';
+          }
+        } else if (errorMessage.includes('model') && errorMessage.includes('not found')) {
+          errorMessage = `Model "${model}" is not available${this.useChutesAI ? ' on Chutes AI' : ' on OpenRouter'}. Please try a different model.`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       if (onChunk && response.body) {
@@ -173,8 +200,8 @@ export function createAIService(userApiKey?: string): OpenRouterService {
   
   // Otherwise, fallback to Chutes AI with our internal key
   const chutesKey = process.env.CHUTES_KEY;
-  if (!chutesKey) {
-    throw new Error('No API key available. Please provide an OpenRouter API key or configure CHUTES_KEY environment variable.');
+  if (!chutesKey || chutesKey.trim() === '' || chutesKey === 'your_chutes_ai_api_key_here') {
+    throw new Error('Chutes AI service is not configured. Please add your OpenRouter API key in settings to use AI models, or contact the administrator to configure the Chutes service.');
   }
   
   return new OpenRouterService(chutesKey, true);
