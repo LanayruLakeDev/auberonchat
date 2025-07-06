@@ -178,127 +178,124 @@ export function ChatInput() {  const {
       // Check if guest has API key for real responses
       const guestApiKey = LocalStorage.getApiKey();
       
-      if (guestApiKey) {
-        // Make real API call
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Guest-API-Key': guestApiKey,
-          },
-          body: JSON.stringify({
-            message: userMessage,
-            model: selectedModel,
-            conversationId: conversationId,
-            attachments: messageAttachments,
-            isGuest: true,
-          }),
-        });
+      // Always make API call - let backend handle fallback to system provider
+      // Make real API call
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(guestApiKey && { 'X-Guest-API-Key': guestApiKey }),
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          model: selectedModel,
+          conversationId: conversationId,
+          attachments: messageAttachments,
+          isGuest: true,
+        }),
+      });
 
-        if (response.ok && response.body) {
-          const reader = response.body.getReader();
-          const decoder = new TextDecoder();
-          let assistantMessage = '';
-          
-          // Add assistant message to localStorage
-          const assistantMessageObj = {
-            id: generateId(),
-            conversation_id: conversationId,
-            role: 'assistant' as const,
-            content: '',
-            created_at: new Date().toISOString()
-          };
-          
-          LocalStorage.addMessage(conversationId, assistantMessageObj);
-          await refreshMessages(conversationId);
-
-          // Stream response
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                try {
-                  const data = JSON.parse(line.slice(6));
-                  if (data.content) {
-                    assistantMessage += data.content;
-                    // Update message in localStorage
-                    LocalStorage.updateMessage(conversationId, assistantMessageObj.id, {
-                      ...assistantMessageObj,
-                      content: assistantMessage
-                    });
-                    await refreshMessages(conversationId);
-                  }
-                } catch (e) {
-                  // Ignore JSON parse errors
-                }
-              }
-            }
-          }
-          
-          // Generate title if it's a new conversation  
-          if (!activeConversation && assistantMessage) {
-            try {
-              const titleResponse = await fetch('/api/generate-title', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-Guest-API-Key': guestApiKey,
-                },
-                body: JSON.stringify({
-                  message: userMessage,
-                  response: assistantMessage,
-                  isGuest: true,
-                }),
-              });
-
-              if (titleResponse.ok) {
-                const { title } = await titleResponse.json();
-                if (title) {
-                  LocalStorage.updateConversation(conversationId, { 
-                    id: conversationId,
-                    user_id: user!.id,
-                    title: title,
-                    model: selectedModel,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                  });
-                  updateConversationTitle(conversationId, title);
-                  await refreshConversations();
-                }
-              }
-            } catch (error) {
-              console.error('Error generating title:', error);
-            }
-          }
-        } else {
-          throw new Error('Failed to get response from API');
-        }
-      } else {
-        // No API key - add demo response
-        const demoMessage = {
+      if (response.ok && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let assistantMessage = '';
+        
+        // Add assistant message to localStorage
+        const assistantMessageObj = {
           id: generateId(),
           conversation_id: conversationId,
           role: 'assistant' as const,
-          content: `I'm a demo response! To get real AI responses, please add your OpenRouter API key in Settings.
-
-Your message was: "${userMessage}"
-
-**Features available with API key:**
-- Real AI responses from multiple models
-- Consensus mode with multiple models  
-- File attachments support
-- Conversation history
-
-Click the Settings button to add your API key!`,
+          content: '',
           created_at: new Date().toISOString()
         };
         
-        LocalStorage.addMessage(conversationId, demoMessage);
+        LocalStorage.addMessage(conversationId, assistantMessageObj);
+        await refreshMessages(conversationId);
+
+        // Stream response
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.chunk) {
+                  assistantMessage += data.chunk;
+                  // Update message in localStorage
+                  LocalStorage.updateMessage(conversationId, assistantMessageObj.id, {
+                    ...assistantMessageObj,
+                    content: assistantMessage
+                  });
+                  await refreshMessages(conversationId);
+                } else if (data.error) {
+                  // Handle error response from backend
+                  const errorContent = data.errorContent || `❌ **Error**: ${data.error}`;
+                  LocalStorage.updateMessage(conversationId, assistantMessageObj.id, {
+                    ...assistantMessageObj,
+                    content: errorContent
+                  });
+                  await refreshMessages(conversationId);
+                  break;
+                }
+              } catch (e) {
+                // Ignore JSON parse errors
+              }
+            }
+          }
+        }
+        
+        // Generate title if it's a new conversation  
+        if (!activeConversation && assistantMessage) {
+          try {
+            const titleResponse = await fetch('/api/generate-title', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(guestApiKey && { 'X-Guest-API-Key': guestApiKey }),
+              },
+              body: JSON.stringify({
+                message: userMessage,
+                response: assistantMessage,
+                isGuest: true,
+              }),
+            });
+
+            if (titleResponse.ok) {
+              const { title } = await titleResponse.json();
+              if (title) {
+                LocalStorage.updateConversation(conversationId, { 
+                  id: conversationId,
+                  user_id: user!.id,
+                  title: title,
+                  model: selectedModel,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                });
+                updateConversationTitle(conversationId, title);
+                await refreshConversations();
+              }
+            }
+          } catch (error) {
+            console.error('Error generating title:', error);
+          }
+        }
+      } else {
+        // Handle API error response
+        const errorData = await response.json().catch(() => ({ error: 'Failed to get response from API' }));
+        const errorMessage = {
+          id: generateId(),
+          conversation_id: conversationId,
+          role: 'assistant' as const,
+          content: `❌ **Error**: ${errorData.error || 'Failed to get response from API'}`,
+          created_at: new Date().toISOString()
+        };
+        
+        LocalStorage.addMessage(conversationId, errorMessage);
         await refreshMessages(conversationId);
       }
     } catch (error) {
@@ -564,102 +561,87 @@ Click the Settings button to add your API key!`,
       // Check if guest has API key for real responses
       const guestApiKey = LocalStorage.getApiKey();
       
-      if (guestApiKey) {
-        // Make real consensus API call
-        const response = await fetch('/api/chat/consensus', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Guest-API-Key': guestApiKey,
-          },
-          body: JSON.stringify({
-            message: userMessage,
-            models: selectedModels,
-            conversationId: conversationId,
-            attachments: messageAttachments,
-            isGuest: true,
-          }),
-        });
+      // Always make API call - let backend handle fallback to system provider
+      // Make real consensus API call
+      const response = await fetch('/api/chat/consensus', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(guestApiKey && { 'X-Guest-API-Key': guestApiKey }),
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          models: selectedModels,
+          conversationId: conversationId,
+          attachments: messageAttachments,
+          isGuest: true,
+        }),
+      });
 
-        if (response.ok) {
-          const consensusResponse = await response.json();
-          
-          // Add consensus message to localStorage
-          const consensusMessageObj = {
-            id: generateId(),
-            conversation_id: conversationId,
-            role: 'assistant' as const,
-            content: JSON.stringify(consensusResponse),
-            model: `consensus:${selectedModels.join(',')}`,
-            consensus_data: consensusResponse,
-            created_at: new Date().toISOString()
-          };
-          
-          LocalStorage.addMessage(conversationId, consensusMessageObj);
-          await refreshMessages(conversationId);
-          
-          // Generate title if it's a new conversation
-          if (!activeConversation) {
-            try {
-              const titleResponse = await fetch('/api/generate-title', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-Guest-API-Key': guestApiKey,
-                },
-                body: JSON.stringify({
-                  message: userMessage,
-                  response: consensusResponse.responses?.[0]?.content || 'Consensus response',
-                  isGuest: true,
-                }),
-              });
-
-              if (titleResponse.ok) {
-                const { title } = await titleResponse.json();
-                if (title) {
-                  LocalStorage.updateConversation(conversationId, {
-                    id: conversationId,
-                    user_id: user!.id,
-                    title: title,
-                    model: `consensus:${selectedModels.join(',')}`,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                  });
-                  updateConversationTitle(conversationId, title);
-                  await refreshConversations();
-                }
-              }
-            } catch (error) {
-              console.error('Error generating title:', error);
-            }
-          }
-        } else {
-          throw new Error('Failed to get consensus response');
-        }
-      } else {
-        // No API key - add demo response
-        const demoConsensusResponse = {
-          responses: selectedModels.map((model, index) => ({
-            model,
-            content: `Demo response from ${model}. Your message: "${userMessage}". Add your OpenRouter API key in Settings to get real responses!`,
-            reasoning: "This is a demo response to show the consensus format.",
-            confidence: 0.8
-          })),
-          summary: `Demo consensus summary for "${userMessage}". Add your API key to get real AI consensus!`,
-          agreement_level: 0.75
-        };
+      if (response.ok) {
+        const consensusResponse = await response.json();
         
-        const demoMessage = {
+        // Add consensus message to localStorage
+        const consensusMessageObj = {
           id: generateId(),
           conversation_id: conversationId,
           role: 'assistant' as const,
-          content: JSON.stringify(demoConsensusResponse),
+          content: JSON.stringify(consensusResponse),
           model: `consensus:${selectedModels.join(',')}`,
-          consensus_data: demoConsensusResponse,
+          consensus_data: consensusResponse,
           created_at: new Date().toISOString()
         };
         
-        LocalStorage.addMessage(conversationId, demoMessage);
+        LocalStorage.addMessage(conversationId, consensusMessageObj);
+        await refreshMessages(conversationId);
+        
+        // Generate title if it's a new conversation
+        if (!activeConversation) {
+          try {
+            const titleResponse = await fetch('/api/generate-title', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(guestApiKey && { 'X-Guest-API-Key': guestApiKey }),
+              },
+              body: JSON.stringify({
+                message: userMessage,
+                response: consensusResponse.responses?.[0]?.content || 'Consensus response',
+                isGuest: true,
+              }),
+            });
+
+            if (titleResponse.ok) {
+              const { title } = await titleResponse.json();
+              if (title) {
+                LocalStorage.updateConversation(conversationId, {
+                  id: conversationId,
+                  user_id: user!.id,
+                  title: title,
+                  model: `consensus:${selectedModels.join(',')}`,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                });
+                updateConversationTitle(conversationId, title);
+                await refreshConversations();
+              }
+            }
+          } catch (error) {
+            console.error('Error generating title:', error);
+          }
+        }
+      } else {
+        // Handle API error response
+        const errorData = await response.json().catch(() => ({ error: 'Failed to get consensus response' }));
+        const errorMessage = {
+          id: generateId(),
+          conversation_id: conversationId,
+          role: 'assistant' as const,
+          content: `❌ **Error**: ${errorData.error || 'Failed to get consensus response'}`,
+          created_at: new Date().toISOString()
+        };
+        
+        LocalStorage.addMessage(conversationId, errorMessage);
         await refreshMessages(conversationId);
       }
     } catch (error) {
