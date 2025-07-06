@@ -18,6 +18,10 @@ interface ChatPageContentProps {
 export function ChatPageContent({ chatId }: ChatPageContentProps) {
   const { profile, isLoading, conversations, setActiveConversation, activeConversation, user, isGuest, refreshProfile } = useChat();  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showApiKeyPrompt, setShowApiKeyPrompt] = useState(false);
+  
+  // DEV: Set to true to enable API Key Onboarding Modal
+  // This will be re-enabled once integrated AI is implemented
+  const ENABLE_API_KEY_MODAL = false;
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [isSubmittingKey, setIsSubmittingKey] = useState(false);
   const router = useRouter();
@@ -62,7 +66,7 @@ export function ChatPageContent({ chatId }: ChatPageContentProps) {
   };
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && ENABLE_API_KEY_MODAL) {
       // Check if user needs to set up API key - show onboarding prompt
       const needsApiKey = isGuest 
         ? !LocalStorage.getApiKey()
