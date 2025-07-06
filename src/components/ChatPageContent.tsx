@@ -77,6 +77,9 @@ export function ChatPageContent({ chatId }: ChatPageContentProps) {
       } else {
         setShowApiKeyPrompt(false);
       }
+    } else {
+      // If modal is disabled, ensure it's never shown
+      setShowApiKeyPrompt(false);
     }
   }, [profile, isLoading, user, isGuest]);
 
