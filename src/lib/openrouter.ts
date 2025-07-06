@@ -22,7 +22,13 @@ const OPENROUTER_TO_CHUTES_MODEL_MAP: Record<string, string> = {
   
   // X.AI Grok models
   'x-ai/grok-3-beta': 'grok-3-beta',
-  'x-ai/grok-3-mini-beta': 'grok-3-mini-beta'
+  'x-ai/grok-3-mini-beta': 'grok-3-mini-beta',
+  
+  // Mistral models
+  'mistralai/mistral-large-2412': 'mistral-large-2412',
+  'mistralai/mistral-small-2412': 'Mistral-Small-3.1-24B-Instruct-2503',
+  'mistralai/pixtral-large-2412': 'pixtral-large-2412',
+  'mistralai/mistral-7b-instruct': 'mistral-7b-instruct'
 };
 
 export class OpenRouterService {
@@ -208,5 +214,9 @@ export const getPopularModels = (): string[] => [
   'deepseek/deepseek-chat-v3-0324:free',
   'deepseek/deepseek-r1-0528:free',
   'x-ai/grok-3-beta',
-  'x-ai/grok-3-mini-beta'
+  'x-ai/grok-3-mini-beta',
+  'mistralai/mistral-large-2412',
+  'mistralai/mistral-small-2412',
+  'mistralai/pixtral-large-2412',
+  'mistralai/mistral-7b-instruct'
 ]; 
