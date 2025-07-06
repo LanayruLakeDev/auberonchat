@@ -187,6 +187,13 @@ export const LocalStorage = {
     return localStorage.getItem(STORAGE_KEYS.API_KEY(userId));
   },
 
+  removeApiKey: (): void => {
+    const userId = LocalStorage.getCurrentUserId();
+    if (userId) {
+      localStorage.removeItem(STORAGE_KEYS.API_KEY(userId));
+    }
+  },
+
   // Sync operations
   setLastSync: (timestamp: string): void => {
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, timestamp);

@@ -380,6 +380,7 @@ function ApiKeysSection() {
   const [isLoading, setIsLoading] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (isGuest) {
@@ -392,6 +393,46 @@ function ApiKeysSection() {
       setApiKey(profile.openrouter_api_key);
     }
   }, [profile, isGuest]);
+
+  const handleDelete = async () => {
+    const confirmDelete = window.confirm('Are you sure you want to delete your API key? You will need to re-enter it to use AI models.');
+    
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    
+    try {
+      if (isGuest) {
+        // Remove from localStorage for guests
+        LocalStorage.removeApiKey();
+        setApiKey('');
+      } else {
+        // Remove from profile for authenticated users
+        const response = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            openrouter_api_key: null,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to delete API key');
+        }
+
+        await refreshProfile();
+        setApiKey('');
+      }
+    } catch (error) {
+      console.error('Error deleting API key:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete API key');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!apiKey.trim()) {
@@ -570,15 +611,43 @@ function ApiKeysSection() {
             </motion.a>
           </div>
 
-          <motion.button
-            onClick={handleSave}
-            disabled={isLoading || !apiKey.trim()}
-            className={`cursor-pointer flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto ${getSaveButtonClass()}`}
-            whileHover={!isLoading ? { scale: 1.02, y: -1 } : {}}
-            whileTap={!isLoading ? { scale: 0.98 } : {}}
-          >
-            {getSaveButtonContent()}
-          </motion.button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <motion.button
+              onClick={handleSave}
+              disabled={isLoading || !apiKey.trim()}
+              className={`cursor-pointer flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-none ${getSaveButtonClass()}`}
+              whileHover={!isLoading ? { scale: 1.02, y: -1 } : {}}
+              whileTap={!isLoading ? { scale: 0.98 } : {}}
+            >
+              {getSaveButtonContent()}
+            </motion.button>
+
+            {(apiKey || profile?.openrouter_api_key) && (
+              <motion.button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="cursor-pointer flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-none bg-purple-500 hover:bg-purple-600 text-white"
+                whileHover={!isDeleting ? { scale: 1.02, y: -1 } : {}}
+                whileTap={!isDeleting ? { scale: 0.98 } : {}}
+              >
+                {isDeleting ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                    />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <XCircle size={16} />
+                    Use System Provider
+                  </>
+                )}
+              </motion.button>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
