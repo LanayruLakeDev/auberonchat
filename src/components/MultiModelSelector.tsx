@@ -33,6 +33,7 @@ export function MultiModelSelector({
       'mistralai': '/logos/mistral.svg',
       'deepseek': '/logos/deepseek.svg',
       'x-ai': '/logos/x-ai.svg',
+      'qwen': '/logos/qwen.svg',
     };
     return providerLogos[provider.toLowerCase()] || null;
   };

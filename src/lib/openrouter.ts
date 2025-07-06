@@ -23,7 +23,7 @@ const CHUTES_AVAILABLE_MODELS: string[] = [
   // Chutes-only models (not available in OpenRouter)
   'tngtech/DeepSeek-TNG-R1T2-Chimera',
   'Qwen/QwQ-32B',
-  'Qwen/Qwen3-32B',
+  'Qwen/Qwen2.5-VL-32B-Instruct',
   'Qwen/Qwen3-235B-A22B',
 ];
 
