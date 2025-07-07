@@ -196,17 +196,26 @@ export class OpenRouterService {
 
 // Helper function to create the appropriate service based on API key availability
 export function createAIService(userApiKey?: string): OpenRouterService {
+  console.log('🔧 CREATE_AI_SERVICE: User API key provided:', !!userApiKey);
+  console.log('🔧 CREATE_AI_SERVICE: User API key length:', userApiKey?.length || 0);
+  
   // If user has provided their own API key, use OpenRouter
   if (userApiKey && userApiKey.trim()) {
+    console.log('✅ CREATE_AI_SERVICE: Using OpenRouter with user API key');
     return new OpenRouterService(userApiKey, false);
   }
   
   // Otherwise, fallback to Chutes AI with our internal key
   const chutesKey = process.env.CHUTES_KEY;
+  console.log('🔧 CREATE_AI_SERVICE: Chutes key configured:', !!chutesKey);
+  console.log('🔧 CREATE_AI_SERVICE: Chutes key length:', chutesKey?.length || 0);
+  
   if (!chutesKey || chutesKey.trim() === '' || chutesKey === 'your_chutes_ai_api_key_here') {
+    console.log('❌ CREATE_AI_SERVICE: Chutes key not configured properly');
     throw new Error('Chutes AI service is not configured. Please add your OpenRouter API key in settings to use AI models, or contact the administrator to configure the Chutes service.');
   }
   
+  console.log('✅ CREATE_AI_SERVICE: Using Chutes AI with system key');
   return new OpenRouterService(chutesKey, true);
 }
 

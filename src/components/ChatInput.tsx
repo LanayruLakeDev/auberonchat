@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useChat } from '@/contexts/ChatContext';
 import { LocalStorage, generateId } from '@/lib/localStorage';
 import { Send, Bot, Loader2, ChevronDown, Check, Brain, Search, X, Paperclip, FileImage, FileText, Trash2, AlertCircle, Users, Type } from 'lucide-react';
-import { getPopularModels } from '@/lib/openrouter';
+import { getPopularModels, getChutesModels } from '@/lib/openrouter';
 import { Attachment, ConsensusResponse } from '@/types/chat';
 import { MultiModelSelector } from './MultiModelSelector';
 import { 
@@ -29,6 +29,7 @@ export function ChatInput() {  const {
     removeOptimisticMessage,
     user,
     isGuest,
+    profile,
   } = useChat();
 
   const [message, setMessage] = useState('');
@@ -123,7 +124,27 @@ export function ChatInput() {  const {
     }
   }, [selectedModel, activeConversation]);
 
-  const popularModels = getPopularModels();
+  const popularModels = useMemo(() => {
+    // Check if user has API key
+    let hasApiKey = false;
+    if (isGuest) {
+      hasApiKey = !!LocalStorage.getApiKey();
+    } else {
+      // For authenticated users, check profile
+      hasApiKey = !!profile?.openrouter_api_key;
+    }
+    
+    console.log('🔑 MODEL_LIST: User has API key:', hasApiKey);
+    console.log('🔑 MODEL_LIST: Is guest:', isGuest);
+    
+    if (hasApiKey) {
+      console.log('🌍 MODEL_LIST: Showing all OpenRouter models');
+      return getPopularModels();
+    } else {
+      console.log('🎯 MODEL_LIST: Showing only Chutes-supported models');
+      return getChutesModels();
+    }
+  }, [isGuest, profile?.openrouter_api_key]);
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -142,6 +163,9 @@ export function ChatInput() {  const {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
+
+    console.log('🎯 GUEST_SUBMIT: Starting guest message submission');
+    console.log('🎯 GUEST_SUBMIT: Selected model:', selectedModel);
 
     try {
       let conversationId = activeConversation?.id;
@@ -177,9 +201,13 @@ export function ChatInput() {  const {
 
       // Check if guest has API key for real responses
       const guestApiKey = LocalStorage.getApiKey();
+      console.log('🔑 GUEST_SUBMIT: Guest API key detected:', !!guestApiKey);
+      console.log('🔑 GUEST_SUBMIT: API key length:', guestApiKey?.length || 0);
       
       // Always make API call - let backend handle fallback to system provider
       // Make real API call
+      console.log('🚀 GUEST_SUBMIT: Making API call to /api/chat');
+      console.log('🚀 GUEST_SUBMIT: Headers will include API key:', !!guestApiKey);
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -194,6 +222,9 @@ export function ChatInput() {  const {
           isGuest: true,
         }),
       });
+
+      console.log('📡 GUEST_SUBMIT: API response status:', response.status);
+      console.log('📡 GUEST_SUBMIT: API response ok:', response.ok);
 
       if (response.ok && response.body) {
         const reader = response.body.getReader();
@@ -312,6 +343,7 @@ export function ChatInput() {  const {
 
     // Route to guest handler if user is a guest
     if (user?.is_guest) {
+      console.log('🔄 CHAT_INPUT: Guest user detected, routing to guest handler');
       return handleGuestSubmit(e);
     }
 

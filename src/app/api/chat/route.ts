@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
     if (isGuest) {
       // For guest users, use the API key from header (if provided)
       userApiKey = guestApiKey || undefined;
+      console.log('🔑 CHAT_API: Guest user - API key from header:', !!userApiKey);
     } else {
       // For authenticated users, get API key from profile (if configured)
       const { data: profile } = await supabase
@@ -41,10 +42,15 @@ export async function POST(request: NextRequest) {
         .single();
 
       userApiKey = profile?.openrouter_api_key || undefined;
+      console.log('🔑 CHAT_API: Authenticated user - API key from profile:', !!userApiKey);
     }
 
+    console.log('🎯 CHAT_API: Selected model:', model);
+    console.log('🎯 CHAT_API: Will use Chutes AI:', !userApiKey);
+    
     // Check if the model is supported by Chutes when no user API key is provided
     if (!userApiKey && !isModelSupportedByChutes(model)) {
+      console.log('❌ CHAT_API: Model not supported by Chutes:', model);
       return NextResponse.json({ 
         error: `Model ${model} requires an OpenRouter API key. Please add your OpenRouter API key in settings, or choose a Chutes-supported model like Llama, Gemini, DeepSeek, or Grok.` 
       }, { status: 400 });
@@ -282,6 +288,7 @@ export async function POST(request: NextRequest) {
     ];
 
     const aiService = createAIService(userApiKey);
+    console.log('🤖 CHAT_API: AI Service created, using Chutes:', !userApiKey);
     
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
