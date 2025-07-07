@@ -124,6 +124,7 @@ export class OpenRouterService {
       console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Response ok: ${response.ok}`);
 
       if (!response.ok) {
+        // This block handles HTTP errors (e.g., 401, 404, 500)
         const errorText = await response.text();
         console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Error response text:`, errorText);
         
@@ -142,18 +143,39 @@ export class OpenRouterService {
         // Add more context to common errors
         if (errorMessage.includes('Invalid API key') || errorMessage.includes('authentication')) {
           if (this.useChutesAI) {
-            errorMessage = 'Chutes AI service authentication failed. Please contact the administrator.';
+            errorMessage = 'Chutes AI service authentication failed. The CHUTES_KEY is likely invalid or expired. Please contact the administrator.';
           } else {
             errorMessage = 'OpenRouter API key is invalid. Please check your API key in settings.';
           }
         } else if (errorMessage.includes('model') && errorMessage.includes('not found')) {
           errorMessage = `Model "${model}" is not available${this.useChutesAI ? ' on Chutes AI' : ' on OpenRouter'}. Please try a different model.`;
+        } else if (this.useChutesAI) {
+          // Add a general-purpose wrapper for any other Chutes errors
+          errorMessage = `Chutes AI API Error: ${errorMessage}`;
         }
         
         throw new Error(errorMessage);
       }
 
+      // If we get here, the HTTP status is OK (200), but the content might still be an error or not a stream.
       if (onChunk && response.body) {
+        // For Chutes, first read the entire response to see if it's an error object instead of a stream
+        if (this.useChutesAI) {
+          const clonedResponse = response.clone();
+          const text = await clonedResponse.text();
+          console.log('[Chutes] Raw initial response text:', text);
+          try {
+            const potentialError = JSON.parse(text);
+            if (potentialError.error) {
+              console.error('[Chutes] Received JSON error instead of stream:', potentialError.error);
+              throw new Error(`Chutes AI API Error: ${potentialError.error.message || text}`);
+            }
+          } catch (e) {
+            // Not a JSON error, proceed with streaming
+            console.log('[Chutes] Response is not a JSON error, attempting to stream.');
+          }
+        }
+
         console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Starting streaming response parsing`);
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -295,4 +317,4 @@ export const getPopularModels = (): string[] => [
 ];
 
 // Get Chutes available models (when using our provider)
-export const getChutesModels = (): string[] => CHUTES_AVAILABLE_MODELS; 
+export const getChutesModels = (): string[] => CHUTES_AVAILABLE_MODELS;
