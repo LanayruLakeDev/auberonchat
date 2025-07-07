@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { createAIService, isModelSupportedByChutes } from '@/lib/openrouter';
+import { ChutesService } from '@/lib/chutes';
 
 export async function POST(request: NextRequest) {
   console.log('🎯 CHAT_API: Route called');
@@ -309,24 +310,40 @@ export async function POST(request: NextRequest) {
       }
     ];
 
-    const aiService = createAIService(userApiKey);
-    console.log('🤖 CHAT_API: AI Service created, using Chutes:', !userApiKey);
-    
-    const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
         try {
           let assistantResponse = '';
 
-          const response = await aiService.createChatCompletion(
-            model,
-            chatMessages,
-            (chunk: string) => {
-              assistantResponse += chunk;
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`));
-            },
-            request.headers.get('origin') || undefined
-          );
+          if (userApiKey) {
+            // Use the existing OpenRouter service if a user key is provided
+            const aiService = createAIService(userApiKey);
+            console.log('🤖 CHAT_API: Using OpenRouter service for user with API key.');
+            await aiService.createChatCompletion(
+              model,
+              chatMessages,
+              (chunk: string) => {
+                assistantResponse += chunk;
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`));
+              },
+              request.headers.get('origin') || undefined
+            );
+          } else {
+            // Use the new, dedicated Chutes service for system provider
+            const chutesKey = process.env.CHUTES_KEY;
+            if (!chutesKey) throw new Error('Chutes API key is not configured on the server.');
+            
+            const chutesService = new ChutesService(chutesKey);
+            console.log('🤖 CHAT_API: Using dedicated Chutes service for system provider.');
+            await chutesService.createChatCompletion({
+              model,
+              messages: chatMessages,
+              onChunk: (chunk: string) => {
+                assistantResponse += chunk;
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`));
+              },
+            });
+          }
 
           // Save assistant response for authenticated users only
           if (!isGuest) {
@@ -431,4 +448,4 @@ export async function POST(request: NextRequest) {
     console.error('Error in chat route:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-} 
+}
