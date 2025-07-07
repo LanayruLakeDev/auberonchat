@@ -84,6 +84,13 @@ export class OpenRouterService {
     onChunk?: (chunk: string) => void,
     referer?: string
   ): Promise<string> {
+    console.log(`🚀 STARTING createChatCompletion - Provider: ${this.useChutesAI ? 'Chutes' : 'OpenRouter'}`);
+    console.log(`🚀 STARTING - Model: ${model}`);
+    console.log(`🚀 STARTING - Messages count: ${messages.length}`);
+    console.log(`🚀 STARTING - Has onChunk: ${!!onChunk}`);
+    console.log(`🚀 STARTING - Base URL: ${this.baseUrl}`);
+    console.log(`🚀 STARTING - API Key length: ${this.apiKey?.length || 0}`);
+    
     try {
       const mappedModel = this.mapModelName(model);
       
@@ -195,7 +202,11 @@ export class OpenRouterService {
         return data.choices?.[0]?.message?.content || '';
       }
     } catch (error) {
-      console.error('Error creating chat completion:', error);
+      console.error('❌ FATAL ERROR in createChatCompletion:', error);
+      console.error('❌ ERROR TYPE:', typeof error);
+      console.error('❌ ERROR NAME:', error instanceof Error ? error.name : 'Unknown');
+      console.error('❌ ERROR MESSAGE:', error instanceof Error ? error.message : String(error));
+      console.error('❌ ERROR STACK:', error instanceof Error ? error.stack : 'No stack');
       throw error;
     }
   }
@@ -218,6 +229,7 @@ export class OpenRouterService {
 
 // Helper function to create the appropriate service based on API key availability
 export function createAIService(userApiKey?: string): OpenRouterService {
+  console.log('🔧 CREATE_AI_SERVICE: Called with userApiKey:', !!userApiKey);
   console.log('🔧 CREATE_AI_SERVICE: User API key provided:', !!userApiKey);
   console.log('🔧 CREATE_AI_SERVICE: User API key length:', userApiKey?.length || 0);
   
