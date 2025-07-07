@@ -37,6 +37,13 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🎯 CHAT_API: Basic validation passed');
+    
+    // CHUTES_KEY DEBUG - Add this temporary check
+    const chutesKey = process.env.CHUTES_KEY;
+    console.log('🔑 CHAT_API: CHUTES_KEY exists:', !!chutesKey);
+    console.log('🔑 CHAT_API: CHUTES_KEY length:', chutesKey?.length || 0);
+    console.log('🔑 CHAT_API: CHUTES_KEY value preview:', chutesKey ? chutesKey.substring(0, 10) + '...' : 'undefined');
+    console.log('🔑 CHAT_API: Is placeholder?', chutesKey === 'your_chutes_ai_api_key_here');
 
     // Get API key based on user type
     let userApiKey: string | undefined;
