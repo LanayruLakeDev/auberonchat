@@ -3,28 +3,40 @@ import { createClient } from '@/lib/supabase-server';
 import { createAIService, isModelSupportedByChutes } from '@/lib/openrouter';
 
 export async function POST(request: NextRequest) {
+  console.log('🎯 CHAT_API: Route called');
+  
   try {
     const supabase = await createClient();
+    console.log('🎯 CHAT_API: Supabase client created');
+    
     const { data: { user }, error: userError } = await supabase.auth.getUser();
+    console.log('🎯 CHAT_API: User auth result - error:', !!userError, 'user:', !!user);
 
     // Check for guest user with API key
     const guestApiKey = request.headers.get('X-Guest-API-Key');
     const isGuest = !!guestApiKey;
+    console.log('🎯 CHAT_API: Guest detection - guestApiKey:', !!guestApiKey, 'isGuest:', isGuest);
 
     // For authenticated users, keep existing validation
     if (!isGuest && (userError || !user)) {
+      console.log('🎯 CHAT_API: Unauthorized - returning 401');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { conversationId, message, model, attachments = [], isGuest: bodyIsGuest } = await request.json();
+    console.log('🎯 CHAT_API: Request parsed - conversationId:', !!conversationId, 'message:', !!message, 'model:', model);
 
     if ((!message || message.trim() === '') && attachments.length === 0) {
+      console.log('🎯 CHAT_API: Missing message/attachments - returning 400');
       return NextResponse.json({ error: 'Message or attachments required' }, { status: 400 });
     }
 
     if (!model) {
+      console.log('🎯 CHAT_API: Missing model - returning 400');
       return NextResponse.json({ error: 'Model is required' }, { status: 400 });
     }
+
+    console.log('🎯 CHAT_API: Basic validation passed');
 
     // Get API key based on user type
     let userApiKey: string | undefined;
