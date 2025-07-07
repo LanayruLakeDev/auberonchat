@@ -88,7 +88,19 @@ export class OpenRouterService {
       const mappedModel = this.mapModelName(model);
       
       console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Creating chat completion with model: ${mappedModel}`);
+      console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Original model name: ${model}`);
       console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] API URL: ${this.baseUrl}/chat/completions`);
+      console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Using Chutes AI: ${this.useChutesAI}`);
+      
+      const requestBody = {
+        model: mappedModel,
+        messages,
+        stream: !!onChunk,
+        max_tokens: 4000,
+        temperature: 0.7,
+      };
+      
+      console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Request body:`, JSON.stringify(requestBody, null, 2));
       
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
@@ -98,14 +110,11 @@ export class OpenRouterService {
           ...(referer && { 'HTTP-Referer': referer }),
           'X-Title': 'T3 Cloneathon Chat',
         },
-        body: JSON.stringify({
-          model: mappedModel,
-          messages,
-          stream: !!onChunk,
-          max_tokens: 4000,
-          temperature: 0.7,
-        }),
+        body: JSON.stringify(requestBody),
       });
+
+      console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Response status: ${response.status}`);
+      console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Response ok: ${response.ok}`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -222,7 +231,11 @@ export function createAIService(userApiKey?: string): OpenRouterService {
 // Helper function to check if a model is supported by Chutes AI
 export function isModelSupportedByChutes(model: string): boolean {
   // Only models in our confirmed list are supported
-  return CHUTES_AVAILABLE_MODELS.includes(model);
+  const isSupported = CHUTES_AVAILABLE_MODELS.includes(model);
+  console.log('🔍 IS_MODEL_SUPPORTED: Checking model:', model);
+  console.log('🔍 IS_MODEL_SUPPORTED: Available models:', CHUTES_AVAILABLE_MODELS);
+  console.log('🔍 IS_MODEL_SUPPORTED: Result:', isSupported);
+  return isSupported;
 }
 
 // Get models list based on provider (OpenRouter vs Chutes)

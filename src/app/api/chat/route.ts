@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
 
     console.log('🎯 CHAT_API: Selected model:', model);
     console.log('🎯 CHAT_API: Will use Chutes AI:', !userApiKey);
+    console.log('🎯 CHAT_API: isModelSupportedByChutes result:', isModelSupportedByChutes(model));
     
     // Check if the model is supported by Chutes when no user API key is provided
     if (!userApiKey && !isModelSupportedByChutes(model)) {
@@ -55,6 +56,8 @@ export async function POST(request: NextRequest) {
         error: `Model ${model} requires an OpenRouter API key. Please add your OpenRouter API key in settings, or choose a Chutes-supported model like Llama, Gemini, DeepSeek, or Grok.` 
       }, { status: 400 });
     }
+
+    console.log('✅ CHAT_API: Model validation passed, proceeding with chat completion');
 
     let conversation = null;
     let messages = [];

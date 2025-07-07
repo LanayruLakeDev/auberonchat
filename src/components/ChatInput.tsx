@@ -435,9 +435,21 @@ export function ChatInput() {  const {
         }),
       });
 
+      console.log('📡 CHAT_INPUT: API response status:', response.status);
+      console.log('📡 CHAT_INPUT: API response ok:', response.ok);
+      console.log('📡 CHAT_INPUT: Selected model sent to backend:', selectedModel);
+
+      console.log('📡 CHAT_INPUT: API response status:', response.status);
+      console.log('📡 CHAT_INPUT: API response ok:', response.ok);
+
       if (!response.ok) {
         if (userMessageId) removeOptimisticMessage(userMessageId);
         if (assistantMessageId) removeOptimisticMessage(assistantMessageId);
+        
+        // Log the error response
+        const errorText = await response.text();
+        console.log('❌ CHAT_INPUT: Error response:', errorText);
+        
         throw new Error('Failed to send message');
       }
 
