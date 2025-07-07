@@ -118,13 +118,17 @@ export class OpenRouterService {
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Error response text:`, errorText);
+        
         let errorMessage = 'Failed to create completion';
         
         try {
           const errorData = JSON.parse(errorText);
+          console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Error data parsed:`, errorData);
           errorMessage = errorData.error?.message || errorData.message || errorMessage;
         } catch {
           // If not JSON, use the raw text
+          console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Error response not JSON, using raw text`);
           errorMessage = errorText || errorMessage;
         }
         
@@ -143,6 +147,7 @@ export class OpenRouterService {
       }
 
       if (onChunk && response.body) {
+        console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Starting streaming response parsing`);
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullResponse = '';
@@ -150,24 +155,32 @@ export class OpenRouterService {
         try {
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Streaming complete. Full response length:`, fullResponse.length);
+              break;
+            }
 
             const chunk = decoder.decode(value, { stream: true });
+            console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Raw chunk received:`, chunk);
             const lines = chunk.split('\n');
 
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 const data = line.slice(6);
+                console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Processing data line:`, data);
                 if (data === '[DONE]') continue;
 
                 try {
                   const parsed = JSON.parse(data);
+                  console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Parsed data:`, parsed);
                   const content = parsed.choices?.[0]?.delta?.content;
                   if (content) {
+                    console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Content chunk:`, content);
                     fullResponse += content;
                     onChunk(content);
                   }
                 } catch (e) {
+                  console.log(`[${this.useChutesAI ? 'Chutes' : 'OpenRouter'}] Failed to parse JSON:`, e, 'Data:', data);
                 }
               }
             }
