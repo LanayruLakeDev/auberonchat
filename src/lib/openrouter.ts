@@ -200,42 +200,48 @@ export function createAIService(userApiKey?: string): OpenRouterService {
   throw new Error('OpenRouter API key is required. Please add your OpenRouter API key in settings to use AI models.');
 }
 
-// Get models list for OpenRouter
+// Get models list for OpenRouter - Cleaned up to include only frontier, strong, and big models
 export const getPopularModels = (): string[] => [
-  // Full OpenRouter model list (when user has their own API key)
-  'google/gemini-2.0-flash-001',
-  'google/gemini-2.0-flash-lite-001',
-  'google/gemini-2.5-flash-preview-05-20',
+  // Google - Pro version only
   'google/gemini-2.5-pro-preview',
-  'openai/gpt-4o-mini',
+  
+  // OpenAI - Frontier models only (no mini/nano)
   'openai/gpt-4o-2024-11-20',
   'openai/gpt-4.1',
-  'openai/gpt-4.1-mini',
-  'openai/gpt-4.1-nano',
-  'openai/o3-mini',
-  'openai/o4-mini',
+  
+  // Anthropic - All strong models
   'anthropic/claude-opus-4',
   'anthropic/claude-sonnet-4',
   'anthropic/claude-3.7-sonnet',
   'anthropic/claude-3.5-sonnet',
+  
+  // Meta Llama - Large models only (no 8B/70B variants)
   'meta-llama/llama-3.3-70b-instruct',
   'meta-llama/llama-4-scout',
   'meta-llama/llama-4-maverick',
+  'meta-llama/llama-3.1-405b-instruct:free',
+  
+  // DeepSeek - Keep both variants
   'deepseek/deepseek-chat-v3-0324:free',
   'deepseek/deepseek-r1-0528:free',
+  
+  // X.AI - Frontier only (no mini)
   'x-ai/grok-3-beta',
-  'x-ai/grok-3-mini-beta',
+  
+  // Mistral - Large only (no small)
   'mistralai/mistral-large-2412',
-  'mistralai/mistral-small-2412',
+  
+  // NousResearch - Strong models
   'nousresearch/hermes-3-llama-3.1-405b:free',
-  'meta-llama/llama-3.1-405b-instruct:free',
-  'meta-llama/llama-3.1-70b-instruct:free',
-  'meta-llama/llama-3.1-8b-instruct:free',
-  'microsoft/wizardlm-2-8x22b:free',
-  'google/gemma-2-9b-it:free',
+  'tngtech/DeepSeek-TNG-R1T2-Chimera',
+  'NousResearch/DeepHermes-3-Mistral-24B-Preview',
+  
+  // Qwen - All variants (as requested exception)
+  'Qwen/QwQ-32B',
+  'Qwen/Qwen2.5-VL-32B-Instruct',
+  'Qwen/Qwen3-235B-A22B',
   'qwen/qwen-2.5-72b-instruct:free',
-  'nvidia/llama-3.1-nemotron-70b-instruct:free',
-  'liquid/lfm-40b:free',
-  'sophosympatheia/midnight-rose-70b:free',
-  'eva-unit-01/eva-qwen-2.5-14b:free'
+  
+  // Sophosympatheia - Keep Rose (as requested exception)
+  'sophosympatheia/midnight-rose-70b:free'
 ];

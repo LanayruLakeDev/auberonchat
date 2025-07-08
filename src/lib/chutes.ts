@@ -1,6 +1,6 @@
 import { ChatMessage } from '@/types/chat';
 
-const CHUTES_API_URL = 'https://api.chutes.ai/v1/chat/completions';
+const CHUTES_API_URL = 'https://llm.chutes.ai/v1/chat/completions';
 
 // This is the list of models we know are available on the Chutes AI system provider.
 // This should be updated if the provider changes their model offerings.
