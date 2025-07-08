@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
-import { createAIService } from '@/lib/openrouter';
+import { OpenRouterService } from '@/lib/openrouter';
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,11 +44,11 @@ export async function PUT(request: NextRequest) {
     const { openrouter_api_key } = await request.json();
 
     // Allow null/empty to clear the API key and use default provider
-    if (openrouter_api_key !== null && openrouter_api_key !== undefined && openrouter_api_key.trim()) {
-      // Validate API key only if provided
-      console.log('Validating API key...');
-      const aiService = createAIService(openrouter_api_key);
-      const isValid = await aiService.validateApiKey();
+    if (openrouter_api_key && openrouter_api_key.trim()) {
+      // Validate API key only if provided, and only with OpenRouterService
+      console.log('Validating API key with OpenRouter...');
+      const openRouterService = new OpenRouterService(openrouter_api_key);
+      const isValid = await openRouterService.validateApiKey();
 
       if (!isValid) {
         console.log('API key validation failed');
@@ -85,4 +85,4 @@ export async function PUT(request: NextRequest) {
     console.error('Error updating profile:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-} 
+}
