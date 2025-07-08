@@ -375,83 +375,146 @@ export async function POST(request: NextRequest) {
             }
           });
 
-          // Wait for all models to complete
-          await Promise.all(modelPromises);
+          // Track completion and send final event as soon as all models are done
+          let completedCount = 0;
+          const totalModels = models.length;
+          let finalEventSent = false;
+          
+          const checkCompletion = () => {
+            completedCount++;
+            if (completedCount === totalModels && !finalEventSent) {
+              finalEventSent = true;
+              sendFinalEvent();
+            }
+          };
 
-          // Save the consensus message to database (authenticated users only)
-          let assistantMessage = null;
-          if (!isGuest) {
-            const consensusContent = JSON.stringify(consensusResponses);
-            
-            const { data: savedMessage } = await supabase
-              .from('messages')
-              .insert({
-                conversation_id: conversation.id,
-                role: 'assistant',
-                content: consensusContent,
-              })
-              .select()
-              .single();
+          const sendFinalEvent = async () => {
+            // Save the consensus message to database (authenticated users only)
+            let assistantMessage = null;
+            if (!isGuest) {
+              const consensusContent = JSON.stringify(consensusResponses);
               
-            assistantMessage = savedMessage;
-          }
+              const { data: savedMessage } = await supabase
+                .from('messages')
+                .insert({
+                  conversation_id: conversation.id,
+                  role: 'assistant',
+                  content: consensusContent,
+                })
+                .select()
+                .single();
+                
+              assistantMessage = savedMessage;
+            }
 
-          // Generate title for new conversations after first response
-          if (messages.length === 0) {
-            try {
-              // Use the best response for title generation (first successful one)
-              const bestResponse = consensusResponses.find(r => r.content && !r.error)?.content || '';
-              
-              const titleRequestHeaders: Record<string, string> = {
-                'Content-Type': 'application/json',
-              };
-              
-              const titleRequestBody: any = {
-                userMessage: message,
-                assistantResponse: bestResponse,
-                conversationId: conversation.id,
-              };
+            // Generate title for new conversations after first response
+            if (messages.length === 0) {
+              try {
+                // Use the best response for title generation (first successful one)
+                const bestResponse = consensusResponses.find(r => r.content && !r.error)?.content || '';
+                
+                const titleRequestHeaders: Record<string, string> = {
+                  'Content-Type': 'application/json',
+                };
+                
+                const titleRequestBody: any = {
+                  userMessage: message,
+                  assistantResponse: bestResponse,
+                  conversationId: conversation.id,
+                };
 
-              if (isGuest) {
-                // For guest users, pass the API key if available
-                if (userApiKey) {
-                  titleRequestHeaders['X-Guest-API-Key'] = userApiKey;
+                if (isGuest) {
+                  // For guest users, pass the API key if available
+                  if (userApiKey) {
+                    titleRequestHeaders['X-Guest-API-Key'] = userApiKey;
+                  }
+                  titleRequestBody.isGuest = true;
+                } else {
+                  // For authenticated users, pass auth headers
+                  titleRequestHeaders['Authorization'] = request.headers.get('Authorization') || '';
+                  titleRequestHeaders['Cookie'] = request.headers.get('Cookie') || '';
                 }
-                titleRequestBody.isGuest = true;
-              } else {
-                // For authenticated users, pass auth headers
-                titleRequestHeaders['Authorization'] = request.headers.get('Authorization') || '';
-                titleRequestHeaders['Cookie'] = request.headers.get('Cookie') || '';
-              }
 
-              const titleResponse = await fetch(`${request.headers.get('origin') || 'http://localhost:3000'}/api/generate-title`, {
-                method: 'POST',
-                headers: titleRequestHeaders,
-                body: JSON.stringify(titleRequestBody),
+                const titleResponse = await fetch(`${request.headers.get('origin') || 'http://localhost:3000'}/api/generate-title`, {
+                  method: 'POST',
+                  headers: titleRequestHeaders,
+                  body: JSON.stringify(titleRequestBody),
+                });
+                
+                if (titleResponse.ok) {
+                  const titleData = await titleResponse.json();
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'title_update',
+                    title: titleData.title,
+                    conversationId: conversation.id
+                  })}\n\n`));
+                }
+              } catch (titleError) {
+                console.error('Failed to generate title:', titleError);
+                // Don't fail the main request if title generation fails
+              }
+            }
+
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'consensus_final',
+              messageId: assistantMessage?.id,
+              responses: consensusResponses
+            })}\n\n`));
+
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            controller.close();
+          };
+
+          // Start all model requests and handle completion tracking
+          modelPromises.forEach(async (promise, index) => {
+            try {
+              await promise;
+            } catch (error) {
+              // Error is already handled in the promise itself
+            } finally {
+              checkCompletion();
+            }
+          });
+
+          // Add a timeout to ensure we don't hang indefinitely
+          // After 3 minutes, force completion with whatever responses we have
+          setTimeout(() => {
+            if (!finalEventSent) {
+              console.warn('Consensus timeout reached, forcing completion');
+              
+              // Mark any still-loading responses as timed out
+              consensusResponses.forEach((response, index) => {
+                if (response.isLoading) {
+                  consensusResponses[index] = {
+                    ...response,
+                    error: 'Response timeout (3 minutes)',
+                    isLoading: false,
+                    isStreaming: false,
+                    responseTime: 180000,
+                  };
+                }
               });
               
-              if (titleResponse.ok) {
-                const titleData = await titleResponse.json();
+              finalEventSent = true;
+              sendFinalEvent();
+            }
+          }, 180000); // 3 minute timeout
+
+          // Send a "taking longer than expected" notification after 30 seconds
+          setTimeout(() => {
+            if (!finalEventSent) {
+              // Check if any models are still loading
+              const stillLoading = consensusResponses.some(r => r.isLoading);
+              if (stillLoading) {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                  type: 'title_update',
-                  title: titleData.title,
-                  conversationId: conversation.id
+                  type: 'consensus_taking_long',
+                  message: 'Some models are taking longer than expected. This is normal for thinking models. Please wait...'
                 })}\n\n`));
               }
-            } catch (titleError) {
-              console.error('Failed to generate title:', titleError);
-              // Don't fail the main request if title generation fails
             }
-          }
+          }, 30000); // 30 second notification
 
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'consensus_final',
-            messageId: assistantMessage?.id,
-            responses: consensusResponses
-          })}\n\n`));
 
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          controller.close();
 
         } catch (error) {
           console.error('Consensus error:', error);

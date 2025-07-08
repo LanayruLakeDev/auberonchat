@@ -673,6 +673,8 @@ export function ChatInput() {  const {
     let conversationId: string | null = null;
     let userMessageId: string | undefined;
     let assistantMessageId: string | undefined;
+    let streamTimeout: NodeJS.Timeout | undefined;
+    let warningTimeout: NodeJS.Timeout | undefined;
     
     try {
       if (activeConversation) {
@@ -778,9 +780,45 @@ export function ChatInput() {  const {
         responseTime: 0,
       }));
 
+      console.log('🌊 CONSENSUS: Starting streaming for', selectedModels.length, 'models');
+
+      const resetStreamTimeout = () => {
+        if (streamTimeout) clearTimeout(streamTimeout);
+        streamTimeout = setTimeout(() => {
+          console.warn('⚠️ CONSENSUS: Stream timeout - forcing completion');
+          if (assistantMessageId) {
+            // Check if we have any responses, and finalize with what we have
+            const hasAnyContent = consensusResponses.some(r => r.content && !r.isLoading);
+            if (hasAnyContent) {
+              console.log('🔄 CONSENSUS: Forcing finalization with partial responses');
+              finalizeMessage(assistantMessageId, JSON.stringify(consensusResponses));
+            } else {
+              console.log('❌ CONSENSUS: No content received, showing error');
+              finalizeMessage(assistantMessageId, '❌ **Error**: Response timeout - no content received');
+            }
+          }
+        }, 180000); // 3 minute client-side timeout
+      };
+
+      // Add a 30-second warning timeout
+      warningTimeout = setTimeout(() => {
+        console.log('⏰ CONSENSUS: Showing "taking longer than expected" warning');
+        // This could be used to show a toast notification or update the UI
+        // For now, just log it
+      }, 30000);
+
+      resetStreamTimeout();
+
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log('🏁 CONSENSUS: Stream completed');
+          if (streamTimeout) clearTimeout(streamTimeout);
+          if (warningTimeout) clearTimeout(warningTimeout);
+          break;
+        }
+
+        resetStreamTimeout(); // Reset timeout on each chunk received
 
         const chunk = decoder.decode(value, { stream: true });
         const lines = chunk.split('\n');
@@ -788,10 +826,14 @@ export function ChatInput() {  const {
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
-            if (data === '[DONE]') continue;
+            if (data === '[DONE]') {
+              console.log('🎯 CONSENSUS: Received [DONE] signal');
+              continue;
+            }
 
             try {
               const parsed = JSON.parse(data);
+              console.log('📦 CONSENSUS: Received event:', parsed.type, 'for model:', parsed.model || 'N/A');
               
               if (parsed.type === 'consensus_update' && assistantMessageId) {
                 const { modelIndex, content } = parsed;
@@ -835,11 +877,25 @@ export function ChatInput() {  const {
                 // Handle title update for consensus - update conversation title without switching chats
                 updateConversationTitle(parsed.conversationId, parsed.title);
               } else if (parsed.type === 'consensus_final' && assistantMessageId) {
+                console.log('✅ CONSENSUS: Final event received, finalizing message');
+                if (streamTimeout) clearTimeout(streamTimeout);
+                if (warningTimeout) clearTimeout(warningTimeout);
                 finalizeMessage(assistantMessageId, JSON.stringify(parsed.responses));
                 
                 // Note: For new conversations, don't manually setActiveConversation
                 // The URL useEffect in ChatContext will handle it automatically
                 // This prevents the refresh that causes animation replay
+              } else if (parsed.type === 'consensus_taking_long') {
+                // Show a notification that models are taking longer than expected
+                console.log('⏰ CONSENSUS: Models taking longer than expected');
+                // You could show a toast notification here if you have a toast system
+                // For now, just log it
+              } else if (parsed.type === 'error' && assistantMessageId) {
+                // Handle general errors in consensus mode
+                console.error('❌ CONSENSUS: General error received:', parsed.error);
+                if (streamTimeout) clearTimeout(streamTimeout);
+                if (warningTimeout) clearTimeout(warningTimeout);
+                finalizeMessage(assistantMessageId, `❌ **Error**: ${parsed.error}`);
               }
             } catch (e) {
               console.error('Error parsing consensus streaming data:', e, 'Data:', data);
@@ -849,6 +905,10 @@ export function ChatInput() {  const {
       }
     } catch (error) {
       console.error('Error sending consensus message:', error);
+      
+      // Clean up timeouts
+      if (streamTimeout) clearTimeout(streamTimeout);
+      if (warningTimeout) clearTimeout(warningTimeout);
       
       if (assistantMessageId) {
         let errorMessage = 'An unexpected error occurred';
@@ -875,6 +935,10 @@ export function ChatInput() {  const {
     } finally {
       setIsLoading(false);
       setAttachments([]);
+      
+      // Clean up timeouts if they exist
+      if (streamTimeout) clearTimeout(streamTimeout);
+      if (warningTimeout) clearTimeout(warningTimeout);
       
       setTimeout(() => {
         if (textareaRef.current) {

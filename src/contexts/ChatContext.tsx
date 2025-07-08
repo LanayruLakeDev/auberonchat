@@ -284,21 +284,67 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const updateStreamingMessage = (messageId: string, content: string) => {
     console.log('🌊 UPDATE_STREAMING: Updating message:', messageId, 'Content length:', content.length);
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId 
-        ? { ...msg, content, isStreaming: true, isLoading: false }
-        : msg
-    ));
+    setMessages(prev => prev.map(msg => {
+      if (msg.id === messageId) {
+        // Check if this is a consensus message by looking at the content
+        if (msg.isConsensus || (content.startsWith('[{') && content.includes('"model"'))) {
+          try {
+            // Try to parse the consensus responses
+            const consensusResponses = JSON.parse(content);
+            if (Array.isArray(consensusResponses) && consensusResponses.length > 0 && consensusResponses[0].model) {
+              return { 
+                ...msg, 
+                content, 
+                consensusResponses,
+                isStreaming: true, 
+                isLoading: false,
+                isConsensus: true
+              };
+            }
+          } catch (e) {
+            // If JSON parsing fails, just update content and keep consensus flag
+            console.log('🔄 UPDATE_STREAMING: JSON parse failed, keeping as raw content');
+          }
+        }
+        
+        // Default behavior for regular messages
+        return { ...msg, content, isStreaming: true, isLoading: false };
+      }
+      return msg;
+    }));
   };
 
   const finalizeMessage = (messageId: string, finalContent: string) => {
     console.log('✅ FINALIZE_MESSAGE: Finalizing message:', messageId, 'Content length:', finalContent.length);
     setMessages(prev => {
-      const updated = prev.map(msg => 
-        msg.id === messageId 
-          ? { ...msg, content: finalContent, isOptimistic: false, isStreaming: false, isLoading: false }
-          : msg
-      );
+      const updated = prev.map(msg => {
+        if (msg.id === messageId) {
+          // Check if this is a consensus message
+          if (msg.isConsensus || (finalContent.startsWith('[{') && finalContent.includes('"model"'))) {
+            try {
+              // Try to parse the consensus responses
+              const consensusResponses = JSON.parse(finalContent);
+              if (Array.isArray(consensusResponses) && consensusResponses.length > 0 && consensusResponses[0].model) {
+                return { 
+                  ...msg, 
+                  content: finalContent, 
+                  consensusResponses,
+                  isOptimistic: false, 
+                  isStreaming: false, 
+                  isLoading: false,
+                  isConsensus: true
+                };
+              }
+            } catch (e) {
+              console.log('🔄 FINALIZE_MESSAGE: JSON parse failed, keeping as raw content');
+            }
+          }
+          
+          // Default behavior for regular messages
+          return { ...msg, content: finalContent, isOptimistic: false, isStreaming: false, isLoading: false };
+        }
+        return msg;
+      });
       console.log('✅ FINALIZE_MESSAGE: Total messages after finalize:', updated.length);
       return updated;
     });
