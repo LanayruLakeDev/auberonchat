@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { createAIService } from '@/lib/openrouter';
-import { ChutesService, CHUTES_SYSTEM_MODELS, isModelSupportedByChutes } from '@/lib/chutes';
+import { ChutesService, CHUTES_SYSTEM_MODELS } from '@/lib/chutes';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,9 +45,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if the model is supported by Chutes when no user API key is provided
-    if (!userApiKey && !isModelSupportedByChutes(model)) {
+    if (!userApiKey && !CHUTES_SYSTEM_MODELS.includes(model)) {
       console.log(`🚫 CHAT_API: Model ${model} not supported by Chutes, userApiKey: ${!!userApiKey}`);
-      console.log(`🚫 CHAT_API: isModelSupportedByChutes(${model}): ${isModelSupportedByChutes(model)}`);
+      console.log(`🚫 CHAT_API: Model supported by Chutes: ${CHUTES_SYSTEM_MODELS.includes(model)}`);
       return NextResponse.json({ 
         error: `Model ${model} requires an OpenRouter API key. Please add your OpenRouter API key in settings, or choose a different model.` 
       }, { status: 400 });
@@ -289,9 +289,9 @@ export async function POST(request: NextRequest) {
       }
     ];
 
-    const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
+        const encoder = new TextEncoder();
         try {
           let assistantResponse = '';
 

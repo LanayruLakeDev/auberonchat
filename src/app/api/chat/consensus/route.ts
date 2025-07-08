@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
-import { createAIService, isModelSupportedByChutes } from '@/lib/openrouter';
+import { createAIService, OpenRouterService } from '@/lib/openrouter';
+import { ChutesService, CHUTES_SYSTEM_MODELS } from '@/lib/chutes';
 import { ConsensusResponse } from '@/types/chat';
 
 export async function POST(request: NextRequest) {
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     // Check if all models are supported when no user API key is provided
     if (!userApiKey) {
-      const unsupportedModels = models.filter((model: string) => !isModelSupportedByChutes(model));
+      const unsupportedModels = models.filter((model: string) => !CHUTES_SYSTEM_MODELS.includes(model));
       if (unsupportedModels.length > 0) {
         return NextResponse.json({ 
           error: `Models ${unsupportedModels.join(', ')} require an OpenRouter API key. Please add your OpenRouter API key in settings, or choose different models.` 

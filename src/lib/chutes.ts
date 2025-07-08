@@ -158,8 +158,3 @@ export class ChutesService {
     }
   }
 }
-
-// Helper function for model validation
-export function isModelSupportedByChutes(model: string): boolean {
-  return ChutesService.isModelSupported(model);
-}
