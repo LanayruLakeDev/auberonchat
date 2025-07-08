@@ -1,4 +1,3 @@
-
 import { ChatMessage } from '@/types/chat';
 
 const CHUTES_API_URL = 'https://api.chutes.ai/v1/chat/completions';
@@ -35,6 +34,20 @@ export class ChutesService {
     }
     this.apiKey = apiKey;
     console.log('✅ ChutesService instantiated');
+  }
+
+  /**
+   * Get the list of available models for this service
+   */
+  async getAvailableModels(): Promise<string[]> {
+    return CHUTES_SYSTEM_MODELS;
+  }
+
+  /**
+   * Check if a model is supported by this service
+   */
+  static isModelSupported(model: string): boolean {
+    return CHUTES_SYSTEM_MODELS.includes(model);
   }
 
   /**
@@ -144,4 +157,9 @@ export class ChutesService {
       throw new Error('An unknown error occurred in the Chutes service.');
     }
   }
+}
+
+// Helper function for model validation
+export function isModelSupportedByChutes(model: string): boolean {
+  return ChutesService.isModelSupported(model);
 }

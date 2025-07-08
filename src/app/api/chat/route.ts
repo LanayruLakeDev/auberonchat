@@ -1,50 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
-import { createAIService, isModelSupportedByChutes } from '@/lib/openrouter';
-import { ChutesService } from '@/lib/chutes';
+import { createAIService } from '@/lib/openrouter';
+import { ChutesService, CHUTES_SYSTEM_MODELS, isModelSupportedByChutes } from '@/lib/chutes';
 
 export async function POST(request: NextRequest) {
-  console.log('🎯 CHAT_API: Route called');
-  
   try {
     const supabase = await createClient();
-    console.log('🎯 CHAT_API: Supabase client created');
-    
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    console.log('🎯 CHAT_API: User auth result - error:', !!userError, 'user:', !!user);
 
     // Check for guest user with API key
     const guestApiKey = request.headers.get('X-Guest-API-Key');
     const isGuest = !!guestApiKey;
-    console.log('🎯 CHAT_API: Guest detection - guestApiKey:', !!guestApiKey, 'isGuest:', isGuest);
 
     // For authenticated users, keep existing validation
     if (!isGuest && (userError || !user)) {
-      console.log('🎯 CHAT_API: Unauthorized - returning 401');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { conversationId, message, model, attachments = [], isGuest: bodyIsGuest } = await request.json();
-    console.log('🎯 CHAT_API: Request parsed - conversationId:', !!conversationId, 'message:', !!message, 'model:', model);
 
     if ((!message || message.trim() === '') && attachments.length === 0) {
-      console.log('🎯 CHAT_API: Missing message/attachments - returning 400');
       return NextResponse.json({ error: 'Message or attachments required' }, { status: 400 });
     }
 
     if (!model) {
-      console.log('🎯 CHAT_API: Missing model - returning 400');
       return NextResponse.json({ error: 'Model is required' }, { status: 400 });
     }
-
-    console.log('🎯 CHAT_API: Basic validation passed');
-    
-    // CHUTES_KEY DEBUG - Add this temporary check
-    const chutesKey = process.env.CHUTES_KEY;
-    console.log('🔑 CHAT_API: CHUTES_KEY exists:', !!chutesKey);
-    console.log('🔑 CHAT_API: CHUTES_KEY length:', chutesKey?.length || 0);
-    console.log('🔑 CHAT_API: CHUTES_KEY value preview:', chutesKey ? chutesKey.substring(0, 10) + '...' : 'undefined');
-    console.log('🔑 CHAT_API: Is placeholder?', chutesKey === 'your_chutes_ai_api_key_here');
 
     // Get API key based on user type
     let userApiKey: string | undefined;
@@ -52,7 +33,6 @@ export async function POST(request: NextRequest) {
     if (isGuest) {
       // For guest users, use the API key from header (if provided)
       userApiKey = guestApiKey || undefined;
-      console.log('🔑 CHAT_API: Guest user - API key from header:', !!userApiKey);
     } else {
       // For authenticated users, get API key from profile (if configured)
       const { data: profile } = await supabase
@@ -62,22 +42,21 @@ export async function POST(request: NextRequest) {
         .single();
 
       userApiKey = profile?.openrouter_api_key || undefined;
-      console.log('🔑 CHAT_API: Authenticated user - API key from profile:', !!userApiKey);
     }
 
-    console.log('🎯 CHAT_API: Selected model:', model);
-    console.log('🎯 CHAT_API: Will use Chutes AI:', !userApiKey);
-    console.log('🎯 CHAT_API: isModelSupportedByChutes result:', isModelSupportedByChutes(model));
-    
     // Check if the model is supported by Chutes when no user API key is provided
     if (!userApiKey && !isModelSupportedByChutes(model)) {
-      console.log('❌ CHAT_API: Model not supported by Chutes:', model);
+      console.log(`🚫 CHAT_API: Model ${model} not supported by Chutes, userApiKey: ${!!userApiKey}`);
+      console.log(`🚫 CHAT_API: isModelSupportedByChutes(${model}): ${isModelSupportedByChutes(model)}`);
       return NextResponse.json({ 
-        error: `Model ${model} requires an OpenRouter API key. Please add your OpenRouter API key in settings, or choose a Chutes-supported model like Llama, Gemini, DeepSeek, or Grok.` 
+        error: `Model ${model} requires an OpenRouter API key. Please add your OpenRouter API key in settings, or choose a different model.` 
       }, { status: 400 });
     }
 
-    console.log('✅ CHAT_API: Model validation passed, proceeding with chat completion');
+    console.log(`✅ CHAT_API: Using model ${model}, userApiKey: ${!!userApiKey}, useChutes: ${!userApiKey}`);
+    if (!userApiKey) {
+      console.log(`🎯 CHAT_API: Will use Chutes AI for model ${model}`);
+    }
 
     let conversation = null;
     let messages = [];
@@ -310,6 +289,7 @@ export async function POST(request: NextRequest) {
       }
     ];
 
+    const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
         try {
@@ -448,4 +428,4 @@ export async function POST(request: NextRequest) {
     console.error('Error in chat route:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+} 
