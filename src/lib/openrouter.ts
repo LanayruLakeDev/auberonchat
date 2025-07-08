@@ -1,4 +1,5 @@
 import { ChatMessage, OpenRouterModel } from '@/types/chat';
+import { ChutesService } from './chutes';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
@@ -186,10 +187,8 @@ export class OpenRouterService {
 }
 
 // Helper function to create the appropriate service based on API key availability
-export function createAIService(userApiKey?: string): OpenRouterService {
+export function createAIService(userApiKey?: string): OpenRouterService | ChutesService {
   console.log('🔧 CREATE_AI_SERVICE: Called with userApiKey:', !!userApiKey);
-  console.log('🔧 CREATE_AI_SERVICE: User API key provided:', !!userApiKey);
-  console.log('🔧 CREATE_AI_SERVICE: User API key length:', userApiKey?.length || 0);
   
   // If user has provided their own API key, use OpenRouter
   if (userApiKey && userApiKey.trim()) {
@@ -197,7 +196,13 @@ export function createAIService(userApiKey?: string): OpenRouterService {
     return new OpenRouterService(userApiKey);
   }
   
-  throw new Error('OpenRouter API key is required. Please add your OpenRouter API key in settings to use AI models.');
+  // Otherwise, fall back to the system's Chutes provider
+  console.log('✅ CREATE_AI_SERVICE: Using Chutes service as fallback');
+  const chutesKey = process.env.CHUTES_KEY;
+  if (!chutesKey) {
+    throw new Error('Chutes API key is not configured on the server.');
+  }
+  return new ChutesService(chutesKey);
 }
 
 // Get models list for OpenRouter - Cleaned up to include only frontier, strong, and big models

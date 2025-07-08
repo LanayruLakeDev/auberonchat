@@ -280,12 +280,9 @@ export async function POST(request: NextRequest) {
       content: currentMessageContent,
     });
 
-    const aiService = createAIService(userApiKey);
-
-    // Create a readable stream for Server-Sent Events
-    const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
+        const encoder = new TextEncoder();
         try {
           const consensusResponses: ConsensusResponse[] = models.map((model: string) => ({
             model,
@@ -306,29 +303,40 @@ export async function POST(request: NextRequest) {
             const startTime = Date.now();
             try {
               let fullResponse = '';
-              
-              await aiService.createChatCompletion(
-                model,
-                conversationHistory,
-                (chunk: string) => {
-                  fullResponse += chunk;
-                  consensusResponses[index] = {
-                    ...consensusResponses[index],
-                    content: fullResponse,
-                    isStreaming: true,
-                    isLoading: false,
-                  };
-                  
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                    type: 'consensus_update',
-                    modelIndex: index,
-                    model: model,
-                    content: fullResponse,
-                    isStreaming: true
-                  })}\n\n`));
-                },
-                request.headers.get('referer') || undefined
-              );
+              const aiService = createAIService(userApiKey);
+
+              const onChunk = (chunk: string) => {
+                fullResponse += chunk;
+                consensusResponses[index] = {
+                  ...consensusResponses[index],
+                  content: fullResponse,
+                  isStreaming: true,
+                  isLoading: false,
+                };
+                
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'consensus_update',
+                  modelIndex: index,
+                  model: model,
+                  content: fullResponse,
+                  isStreaming: true
+                })}\n\n`));
+              };
+
+              if (aiService instanceof OpenRouterService) {
+                await aiService.createChatCompletion(
+                  model,
+                  conversationHistory,
+                  onChunk,
+                  request.headers.get('referer') || undefined
+                );
+              } else if (aiService instanceof ChutesService) {
+                await aiService.createChatCompletion({
+                  model,
+                  messages: conversationHistory,
+                  onChunk,
+                });
+              }
 
               const responseTime = Date.now() - startTime;
               consensusResponses[index] = {
@@ -468,4 +476,4 @@ export async function POST(request: NextRequest) {
     console.error('Error in consensus endpoint:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-} 
+}
