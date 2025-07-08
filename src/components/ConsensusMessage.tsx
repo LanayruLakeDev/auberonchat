@@ -222,8 +222,21 @@ function ModelResponseCard({
   formatResponseTime,
   isSideBySide = false
 }: ModelResponseCardProps) {
+  const [isContentExpanded, setIsContentExpanded] = useState(true);
   const modelInfo = formatModelName(response.model);
   const hasContent = response.content && response.content.trim().length > 0;
+  
+  // Determine if content is long (more than 300 characters or more than 4 lines)
+  const isLongContent = response.content && (
+    response.content.length > 300 || 
+    response.content.split('\n').length > 4
+  );
+  
+  // Create truncated preview for side-by-side view
+  const truncatedContent = response.content ? 
+    response.content.split('\n').slice(0, 3).join('\n') + 
+    (response.content.split('\n').length > 3 ? '...' : '') 
+    : '';
 
   return (
     <div
@@ -314,13 +327,51 @@ function ModelResponseCard({
               )}
             </button>
           )}
+          
+          {hasContent && isSideBySide && isLongContent && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsContentExpanded(!isContentExpanded);
+              }}
+              className="cursor-pointer p-1 rounded hover:bg-white/10 transition-colors"
+            >
+              {isContentExpanded ? (
+                <ChevronUp size={16} className="text-white/40" />
+              ) : (
+                <ChevronDown size={16} className="text-white/40" />
+              )}
+            </button>
+          )}
         </div>
       </div>
 
       {hasContent && (isExpanded || isSideBySide) && (
         <div className={`px-4 pb-4 border-t border-white/10 ${isSideBySide ? 'flex-1 overflow-hidden' : ''}`}>
           <div className={`mt-4 ${isSideBySide ? 'h-full overflow-y-auto' : ''}`}>
-            <MarkdownRenderer content={response.content} />
+            {isSideBySide && isLongContent && !isContentExpanded ? (
+              <>
+                <MarkdownRenderer content={truncatedContent} />
+                <button
+                  onClick={() => setIsContentExpanded(true)}
+                  className="mt-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  Show more...
+                </button>
+              </>
+            ) : (
+              <>
+                <MarkdownRenderer content={response.content} />
+                {isSideBySide && isLongContent && isContentExpanded && (
+                  <button
+                    onClick={() => setIsContentExpanded(false)}
+                    className="mt-2 text-sm text-white/60 hover:text-white/80 transition-colors"
+                  >
+                    Show less
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
