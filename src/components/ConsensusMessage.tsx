@@ -246,7 +246,7 @@ function ModelResponseCard({
           : response.isLoading 
             ? 'border-yellow-400/30 bg-yellow-500/5' 
             : 'border-white/10'
-      } ${isSideBySide ? 'h-full flex flex-col' : ''}`}
+      } ${isSideBySide ? 'flex flex-col' : ''}`}
     >
       <div 
         className={`flex items-center gap-3 p-4 ${hasContent && !isSideBySide ? 'cursor-pointer' : ''}`}
@@ -347,8 +347,8 @@ function ModelResponseCard({
       </div>
 
       {hasContent && (isExpanded || isSideBySide) && (
-        <div className={`px-4 pb-4 border-t border-white/10 ${isSideBySide ? 'flex-1 overflow-hidden' : ''}`}>
-          <div className={`mt-4 ${isSideBySide ? 'h-full overflow-y-auto' : ''}`}>
+        <div className={`px-4 pb-4 border-t border-white/10 ${isSideBySide ? 'flex-1' : ''}`}>
+          <div className={`mt-4 ${isSideBySide && isContentExpanded && isLongContent ? 'max-h-96 overflow-y-auto' : ''}`}>
             {isSideBySide && isLongContent && !isContentExpanded ? (
               <>
                 <MarkdownRenderer content={truncatedContent} />
