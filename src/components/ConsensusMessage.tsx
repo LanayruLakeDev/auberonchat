@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Brain, Clock, AlertCircle, ChevronDown, ChevronUp, Copy, Check, List, Grid3X3 } from 'lucide-react';
 import { ConsensusResponse } from '@/types/chat';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -16,6 +16,17 @@ export function ConsensusMessage({ responses, isStreaming }: ConsensusMessagePro
   const [expandedModels, setExpandedModels] = useState<Set<string>>(new Set());
   const [copiedModel, setCopiedModel] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('stacked');
+
+  // Auto-expand models when they start streaming content or when they complete
+  useEffect(() => {
+    const modelsWithContent = responses
+      .filter(r => (r.content && r.content.trim().length > 0) || r.isStreaming)
+      .map(r => r.model);
+    
+    if (modelsWithContent.length > 0) {
+      setExpandedModels(new Set(modelsWithContent));
+    }
+  }, [responses]);
 
   const getProviderLogo = (provider: string) => {
     const providerLogos: Record<string, string> = {
