@@ -15,6 +15,7 @@ import {
   getMaxFileSizeForModel,
   getModelCapabilityDescription 
 } from '@/lib/model-capabilities';
+import { getFilteredModels, getModelFilteringContext, getUserModeDescription, getModelAvailabilityInfo } from '@/lib/modelFiltering';
 
 export function ChatInput() {  const {
     activeConversation,
@@ -29,6 +30,7 @@ export function ChatInput() {  const {
     removeOptimisticMessage,
     user,
     isGuest,
+    profile,
   } = useChat();
 
   const [message, setMessage] = useState('');
@@ -123,7 +125,30 @@ export function ChatInput() {  const {
     }
   }, [selectedModel, activeConversation]);
 
-  const popularModels = getPopularModels();
+  // Get filtered models based on user's API key status
+  const modelFilteringContext = getModelFilteringContext(isGuest, profile);
+  const popularModels = getFilteredModels(modelFilteringContext);
+  const userModeInfo = getUserModeDescription(modelFilteringContext);
+  
+  // Check if selected model is available in current mode, if not switch to first available
+  useEffect(() => {
+    if (popularModels.length > 0 && !popularModels.includes(selectedModel)) {
+      console.log(`Selected model ${selectedModel} not available in current mode, switching to ${popularModels[0]}`);
+      setSelectedModel(popularModels[0]);
+    }
+  }, [popularModels, selectedModel]);
+  
+  // Filter consensus models to only include available ones
+  useEffect(() => {
+    if (selectedModels.length > 0) {
+      const availableSelectedModels = selectedModels.filter(model => popularModels.includes(model));
+      if (availableSelectedModels.length !== selectedModels.length) {
+        console.log(`Filtering consensus models: ${selectedModels.length} -> ${availableSelectedModels.length}`);
+        setSelectedModels(availableSelectedModels);
+      }
+    }
+  }, [popularModels, selectedModels]);
+  
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -1162,6 +1187,14 @@ export function ChatInput() {  const {
                   <h2 className="text-2xl font-bold text-white">Select AI Model</h2>
                   <p className="text-white/60 text-sm mt-1">Choose the perfect AI model for your task</p>
                 </div>
+                <div className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 ${
+                  userModeInfo.color === 'blue' 
+                    ? 'bg-blue-500/20 border border-blue-400/30 text-blue-300' 
+                    : 'bg-green-500/20 border border-green-400/30 text-green-300'
+                }`}>
+                  <span className="text-lg">{userModeInfo.icon}</span>
+                  <span>{userModeInfo.mode}</span>
+                </div>
               </div>
               
               <button
@@ -1174,6 +1207,31 @@ export function ChatInput() {  const {
             </div>
 
             <div className="px-8 pt-6 pb-4">
+              {!modelFilteringContext.hasApiKey && (
+                <div className="mb-4 p-4 bg-green-500/10 border border-green-400/20 rounded-xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-lg">🆓</span>
+                    <h4 className="text-green-300 font-medium">System Provider Mode</h4>
+                  </div>
+                  <p className="text-green-200/80 text-sm leading-relaxed">
+                    You're using our system provider with free access to {popularModels.length} AI models. 
+                    To access additional models, add your OpenRouter API key in settings.
+                  </p>
+                </div>
+              )}
+              
+              {modelFilteringContext.hasApiKey && (
+                <div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/20 rounded-xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-lg">🔑</span>
+                    <h4 className="text-blue-300 font-medium">OpenRouter Mode</h4>
+                  </div>
+                  <p className="text-blue-200/80 text-sm leading-relaxed">
+                    You're using your personal API key with access to {popularModels.length} AI models from various providers.
+                  </p>
+                </div>
+              )}
+              
               <div className="relative">
                 <Search size={18} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/40" />
                 <input

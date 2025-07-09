@@ -4,6 +4,8 @@ import React, { useState, useMemo } from 'react';
 import { Brain, Check, X, Search, Users, Type, FileImage, FileText } from 'lucide-react';
 import { getPopularModels } from '@/lib/openrouter';
 import { getModelCapabilities } from '@/lib/model-capabilities';
+import { getFilteredModels, getModelFilteringContext, getUserModeDescription } from '@/lib/modelFiltering';
+import { useChat } from '@/contexts/ChatContext';
 
 interface MultiModelSelectorProps {
   selectedModels: string[];
@@ -20,7 +22,11 @@ export function MultiModelSelector({
 }: MultiModelSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
   
-  const popularModels = getPopularModels();
+  // Get user context for model filtering
+  const { isGuest, profile } = useChat();
+  const modelFilteringContext = getModelFilteringContext(isGuest, profile);
+  const popularModels = getFilteredModels(modelFilteringContext);
+  const userModeInfo = getUserModeDescription(modelFilteringContext);
 
 
 
@@ -169,6 +175,14 @@ export function MultiModelSelector({
             <div className="px-4 py-2 bg-purple-500/20 border border-purple-400/30 rounded-full text-sm text-purple-300 font-medium">
               {selectedModels.length} selected
             </div>
+            <div className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 ${
+              userModeInfo.color === 'blue' 
+                ? 'bg-blue-500/20 border border-blue-400/30 text-blue-300' 
+                : 'bg-green-500/20 border border-green-400/30 text-green-300'
+            }`}>
+              <span className="text-lg">{userModeInfo.icon}</span>
+              <span>{userModeInfo.mode}</span>
+            </div>
           </div>
           
           <button
@@ -181,6 +195,31 @@ export function MultiModelSelector({
         </div>
 
         <div className="px-8 pt-6 pb-4">
+          {!modelFilteringContext.hasApiKey && (
+            <div className="mb-4 p-4 bg-green-500/10 border border-green-400/20 rounded-xl">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-lg">🆓</span>
+                <h4 className="text-green-300 font-medium">System Provider Mode</h4>
+              </div>
+              <p className="text-green-200/80 text-sm leading-relaxed">
+                You're using our system provider. {popularModels.length} models available for consensus mode. 
+                Add your OpenRouter API key for access to additional models.
+              </p>
+            </div>
+          )}
+          
+          {modelFilteringContext.hasApiKey && (
+            <div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/20 rounded-xl">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-lg">🔑</span>
+                <h4 className="text-blue-300 font-medium">OpenRouter Mode</h4>
+              </div>
+              <p className="text-blue-200/80 text-sm leading-relaxed">
+                You're using your personal API key. {popularModels.length} models available for consensus mode.
+              </p>
+            </div>
+          )}
+          
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
               <Search size={18} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/40" />
