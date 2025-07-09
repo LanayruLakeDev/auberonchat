@@ -14,12 +14,15 @@ import { ConsensusResponse } from '@/types/chat';
 
 const getProviderLogo = (model: string) => {
   const providerLogos: Record<string, string> = {
-    'anthropic': '/logos/anthropic.svg',
     'openai': '/logos/openai.svg',
+    'anthropic': '/logos/anthropic.svg',
     'google': '/logos/google.svg',
     'meta-llama': '/logos/meta.svg',
     'mistralai': '/logos/mistral.svg',
-    'deepseek': '/logos/deepseek.svg'
+    'deepseek': '/logos/deepseek.svg',
+    'x-ai': '/logos/x-ai.svg',
+    'qwen': '/logos/qwen.svg',
+    'nousresearch': '/logos/nousresearch.svg',
   };
   
   const provider = model.split('/')[0];

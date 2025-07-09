@@ -36,6 +36,9 @@ export function ConsensusMessage({ responses, isStreaming }: ConsensusMessagePro
       'meta-llama': '/logos/meta.svg',
       'mistralai': '/logos/mistral.svg',
       'deepseek': '/logos/deepseek.svg',
+      'x-ai': '/logos/x-ai.svg',
+      'qwen': '/logos/qwen.svg',
+      'nousresearch': '/logos/nousresearch.svg',
     };
     return providerLogos[provider.toLowerCase()] || null;
   };
