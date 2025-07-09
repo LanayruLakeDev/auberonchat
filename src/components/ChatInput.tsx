@@ -1051,11 +1051,17 @@ export function ChatInput() {  const {
     const parts = model.split('/');
     if (parts.length === 2) {
       const [provider, modelName] = parts;
+      // Normalize provider names for consistent grouping
+      let normalizedProvider = provider.toLowerCase();
+      if (normalizedProvider === 'nousresearch') {
+        normalizedProvider = 'nousresearch';
+      }
+      
       return {
         name: modelName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        provider: provider.charAt(0).toUpperCase() + provider.slice(1),
-        providerKey: provider,
-        logo: getProviderLogo(provider)
+        provider: normalizedProvider === 'nousresearch' ? 'NousResearch' : provider.charAt(0).toUpperCase() + provider.slice(1),
+        providerKey: normalizedProvider,
+        logo: getProviderLogo(normalizedProvider)
       };
     }
     return { 
