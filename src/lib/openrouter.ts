@@ -207,7 +207,10 @@ export function createAIService(userApiKey?: string): OpenRouterService | Chutes
 
 // Get models list for OpenRouter - Cleaned up to include only frontier, strong, and big models
 export const getPopularModels = (): string[] => [
-  // Google - Pro version only
+  // Google - All Gemini variants
+  'google/gemini-2.0-flash-001',
+  'google/gemini-2.0-flash-lite-001', 
+  'google/gemini-2.5-flash-preview-05-20',
   'google/gemini-2.5-pro-preview',
   
   // OpenAI - Frontier models only (no mini/nano)
@@ -230,8 +233,9 @@ export const getPopularModels = (): string[] => [
   'deepseek/deepseek-chat-v3-0324:free',
   'deepseek/deepseek-r1-0528:free',
   
-  // X.AI - Frontier only (no mini)
+  // X.AI - All Grok variants
   'x-ai/grok-3-beta',
+  'x-ai/grok-3-mini-beta',
   
   // Mistral - Large only (no small)
   'mistralai/mistral-large-2412',

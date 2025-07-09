@@ -5,14 +5,9 @@ const CHUTES_API_URL = 'https://llm.chutes.ai/v1/chat/completions';
 // This is the list of models we know are available on the Chutes AI system provider.
 // This should be updated if the provider changes their model offerings.
 export const CHUTES_SYSTEM_MODELS = [
-  'meta-llama/llama-4-maverick',
+  // Only DeepSeek models are available on both Chutes and OpenRouter
   'deepseek/deepseek-chat-v3-0324:free',
   'deepseek/deepseek-r1-0528:free',
-  'tngtech/DeepSeek-TNG-R1T2-Chimera',
-  'Qwen/QwQ-32B',
-  'Qwen/Qwen2.5-VL-32B-Instruct',
-  'Qwen/Qwen3-235B-A22B',
-  'NousResearch/DeepHermes-3-Mistral-24B-Preview',
 ];
 
 // Model name mappings from the standard OpenRouter format to the specific format Chutes AI requires.
