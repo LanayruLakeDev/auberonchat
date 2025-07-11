@@ -1,4 +1,13 @@
 'use client';
+const getProviderLogo = (provider: string) => {
+  const providerLogos: Record<string, string> = {
+    'openai': '/logos/openai.svg',
+    'anthropic': '/logos/anthropic.svg',
+    'google': '/logos/google.svg',
+    'meta-llama': '/logos/meta.svg',
+    'mistralai': '/logos/mistral.svg',
+    'deepseek': '/logos/deepseek.svg',
+'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,7 +21,7 @@ import { LordIcon } from './LordIcon';
 import { ScrollToBottomButton } from './ScrollToBottomButton';
 import { ConsensusResponse } from '@/types/chat';
 
-const getProviderLogo = (model: string) => {
+const getProviderLogo = (provider: string) => {
   const providerLogos: Record<string, string> = {
     'openai': '/logos/openai.svg',
     'anthropic': '/logos/anthropic.svg',
@@ -23,7 +32,11 @@ const getProviderLogo = (model: string) => {
     'x-ai': '/logos/x-ai.svg',
     'qwen': '/logos/qwen.svg',
     'nousresearch': '/logos/nousresearch.svg',
+    'tngtech': '/logos/tngtech.svg',
+    'sophosympatheia': '/logos/sophosympatheia.svg',
   };
+  return providerLogos[provider.toLowerCase()] || null;
+};
   
   const provider = model.split('/')[0];
   return providerLogos[provider.toLowerCase()] || null;

@@ -41,6 +41,8 @@ export function MultiModelSelector({
       'x-ai': '/logos/x-ai.svg',
       'qwen': '/logos/qwen.svg',
       'nousresearch': '/logos/nousresearch.svg',
+      'tngtech': '/logos/tngtech.svg',
+      'sophosympatheia': '/logos/sophosympatheia.svg',
     };
     return providerLogos[provider.toLowerCase()] || null;
   };
