@@ -1187,14 +1187,17 @@ export function ChatInput() {  const {
                   <h2 className="text-2xl font-bold text-white">Select AI Model</h2>
                   <p className="text-white/60 text-sm mt-1">Choose the perfect AI model for your task</p>
                 </div>
-                <div className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 ${
-                  userModeInfo.color === 'blue' 
-                    ? 'bg-blue-500/20 border border-blue-400/30 text-blue-300' 
-                    : 'bg-green-500/20 border border-green-400/30 text-green-300'
-                }`}>
-                  <span className="text-lg">{userModeInfo.icon}</span>
-                  <span>{userModeInfo.mode}</span>
-                </div>
+                {modelFilteringContext.hasApiKey && (
+                  <div className="relative group">
+                    <div className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 bg-blue-500/20 border border-blue-400/30 text-blue-300 cursor-help">
+                      <span>🔑</span>
+                      <span>OpenRouter mode</span>
+                    </div>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-blue-500/90 backdrop-blur-md text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                      You're using your personal API key and will be billed per token on OpenRouter
+                    </div>
+                  </div>
+                )}
               </div>
               
               <button
@@ -1207,31 +1210,6 @@ export function ChatInput() {  const {
             </div>
 
             <div className="px-8 pt-6 pb-4">
-              {!modelFilteringContext.hasApiKey && (
-                <div className="mb-4 p-4 bg-green-500/10 border border-green-400/20 rounded-xl">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-lg">🆓</span>
-                    <h4 className="text-green-300 font-medium">System Provider Mode</h4>
-                  </div>
-                  <p className="text-green-200/80 text-sm leading-relaxed">
-                    You're using our system provider with free access to {popularModels.length} AI models. 
-                    To access additional models, add your OpenRouter API key in settings.
-                  </p>
-                </div>
-              )}
-              
-              {modelFilteringContext.hasApiKey && (
-                <div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/20 rounded-xl">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-lg">🔑</span>
-                    <h4 className="text-blue-300 font-medium">OpenRouter Mode</h4>
-                  </div>
-                  <p className="text-blue-200/80 text-sm leading-relaxed">
-                    You're using your personal API key with access to {popularModels.length} AI models from various providers.
-                  </p>
-                </div>
-              )}
-              
               <div className="relative">
                 <Search size={18} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/40" />
                 <input
