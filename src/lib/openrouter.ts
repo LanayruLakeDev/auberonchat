@@ -196,13 +196,10 @@ export function createAIService(userApiKey?: string): OpenRouterService | Chutes
     return new OpenRouterService(userApiKey);
   }
   
-  // Otherwise, fall back to the system's Chutes provider
-  console.log('✅ CREATE_AI_SERVICE: Using Chutes service as fallback');
-  const chutesKey = process.env.CHUTES_KEY;
-  if (!chutesKey) {
-    throw new Error('Chutes API key is not configured on the server.');
-  }
-  return new ChutesService(chutesKey);
+  // Otherwise, fall back to the system's LLM7 provider
+  console.log('✅ CREATE_AI_SERVICE: Using LLM7 service as fallback');
+  const llm7Key = process.env.CHUTES_KEY || 'unused'; // LLM7 uses 'unused' as default
+  return new ChutesService(llm7Key);
 }
 
 // Get models list for OpenRouter - Cleaned up to include only frontier, strong, and big models

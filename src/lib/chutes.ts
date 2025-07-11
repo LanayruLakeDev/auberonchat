@@ -1,6 +1,6 @@
 import { ChatMessage } from '@/types/chat';
 
-const CHUTES_API_URL = 'https://llm.chutes.ai/v1/chat/completions';
+const CHUTES_API_URL = 'https://api.llm7.io/v1/chat/completions';
 
 // This is the list of models we know are available on the Chutes AI system provider.
 // This should be updated if the provider changes their model offerings.
@@ -10,11 +10,10 @@ export const CHUTES_SYSTEM_MODELS = [
   'deepseek/deepseek-r1-0528:free',
 ];
 
-// Model name mappings from the standard OpenRouter format to the specific format Chutes AI requires.
+// Model name mappings from the standard OpenRouter format to the specific format LLM7 requires.
 const MODEL_MAPPINGS: Record<string, string> = {
-  'meta-llama/llama-4-maverick': 'chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8',
-  'deepseek/deepseek-chat-v3-0324:free': 'deepseek-ai/DeepSeek-V3-0324',
-  'deepseek/deepseek-r1-0528:free': 'deepseek-ai/DeepSeek-R1-0528',
+  'deepseek/deepseek-chat-v3-0324:free': 'deepseek-v3-0324',
+  'deepseek/deepseek-r1-0528:free': 'deepseek-r1-0528',
 };
 
 /**
@@ -28,7 +27,7 @@ export class ChutesService {
       throw new Error('ChutesService: A valid API key is required.');
     }
     this.apiKey = apiKey;
-    console.log('✅ ChutesService instantiated');
+    console.log('✅ ChutesService instantiated (using LLM7)', apiKey === 'unused' ? 'with default key' : 'with custom key');
   }
 
   /**
@@ -58,7 +57,7 @@ export class ChutesService {
     onChunk: (chunk: string) => void;
   }): Promise<string> {
     const mappedModel = MODEL_MAPPINGS[model] || model;
-    console.log(`[ChutesService] Requesting completion for model: ${model} (mapped to: ${mappedModel})`);
+    console.log(`[ChutesService] Requesting completion for model: ${model} (mapped to: ${mappedModel}) via LLM7`);
 
     const requestBody = {
       model: mappedModel,
@@ -74,7 +73,7 @@ export class ChutesService {
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
-          'X-Title': 'T3 Cloneathon Chat',
+          'X-Title': 'Auberon Chat via LLM7',
         },
         body: JSON.stringify(requestBody),
       });
