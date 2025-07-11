@@ -5,9 +5,44 @@ const CHUTES_API_URL = 'https://api.llm7.io/v1/chat/completions';
 // This is the list of models we know are available on the Chutes AI system provider.
 // This should be updated if the provider changes their model offerings.
 export const CHUTES_SYSTEM_MODELS = [
-  // Only DeepSeek models are available on both Chutes and OpenRouter
+  // DeepSeek models (shared with OpenRouter)
   'deepseek/deepseek-chat-v3-0324:free',
   'deepseek/deepseek-r1-0528:free',
+  
+  // LLM7-exclusive models
+  'deepseek-v3-0324',
+  'deepseek-r1-0528', 
+  'grok-3-mini-high',
+  'llama-fast-roblox',
+  'llama-4-scout-17b-16e-instruct',
+  'mistral-small-3.1-24b-instruct-2503',
+  'gpt-4o-mini-2024-07-18',
+  'gpt-4.1-nano-2025-04-14',
+  'openai-reasoning',
+  'phi-4-multilmodal-instruct',
+  'qwen2.5-coder-32b-instruct',
+  'bidara',
+  'mirexa',
+  'rtist',
+  'mistral-large-2411',
+  'codestral-2405',
+  'codestral-2501',
+  'ministral-3b-2410',
+  'ministral-8b-2410',
+  'mistral-large-2402',
+  'mistral-large-2407',
+  'mistral-medium',
+  'mistral-saba-2502',
+  'mistral-small-2402',
+  'mistral-small-2409',
+  'mistral-small-2501',
+  'mistral-small-2503',
+  'open-mistral-7b',
+  'open-mistral-nemo',
+  'open-mixtral-8x22b',
+  'open-mixtral-8x7b',
+  'pixtral-12b-2409',
+  'pixtral-large-2411',
 ];
 
 // Model name mappings from the standard OpenRouter format to the specific format LLM7 requires.
