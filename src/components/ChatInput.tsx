@@ -1099,10 +1099,64 @@ export function ChatInput() {  const {
         logo: getProviderLogo(normalizedProvider)
       };
     }
+    
+    // Handle LLM7 models without provider prefix
+    const modelLower = model.toLowerCase();
+    if (modelLower.startsWith('deepseek-')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        provider: 'DeepSeek',
+        providerKey: 'deepseek',
+        logo: getProviderLogo('deepseek')
+      };
+    } else if (modelLower.startsWith('grok-')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        provider: 'X.AI',
+        providerKey: 'grok',
+        logo: getProviderLogo('grok')
+      };
+    } else if (modelLower.startsWith('llama-')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        provider: 'Meta',
+        providerKey: 'llama',
+        logo: getProviderLogo('llama')
+      };
+    } else if (modelLower.startsWith('mistral-') || modelLower.startsWith('codestral-') || modelLower.startsWith('ministral-') || modelLower.startsWith('pixtral-') || modelLower.startsWith('open-mistral-') || modelLower.startsWith('open-mixtral-')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        provider: 'Mistral',
+        providerKey: 'mistral',
+        logo: getProviderLogo('mistral')
+      };
+    } else if (modelLower.startsWith('gpt-') || modelLower.startsWith('openai-')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        provider: 'OpenAI',
+        providerKey: 'openai',
+        logo: getProviderLogo('openai')
+      };
+    } else if (modelLower.startsWith('phi-')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        provider: 'Microsoft',
+        providerKey: 'phi',
+        logo: getProviderLogo('phi')
+      };
+    } else if (modelLower.startsWith('qwen')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        provider: 'Qwen',
+        providerKey: 'qwen',
+        logo: getProviderLogo('qwen')
+      };
+    }
+    
     return { 
       name: model, 
-      provider: '', 
-      providerKey: '', 
+      provider: 'Other', 
+      providerKey: 'other', 
       logo: null
     };
   };
