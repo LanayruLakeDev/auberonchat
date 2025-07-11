@@ -41,6 +41,14 @@ export function ConsensusMessage({ responses, isStreaming }: ConsensusMessagePro
       'nousresearch': '/logos/nousresearch.svg',
       'tngtech': '/logos/tngtech.svg',
       'sophosympatheia': '/logos/sophosympatheia.svg',
+      'microsoft': '/logos/microsoft.svg',
+      'phi': '/logos/microsoft.svg',
+      'grok': '/logos/x-ai.svg',
+      'llama': '/logos/meta.svg',
+      'mistral': '/logos/mistral.svg',
+      'codestral': '/logos/mistral.svg',
+      'ministral': '/logos/mistral.svg',
+      'pixtral': '/logos/mistral.svg',
     };
     return providerLogos[provider.toLowerCase()] || null;
   };
