@@ -43,6 +43,16 @@ export function ChatInput() {  const {
     return 'openai/o3-mini';
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+
+  const handleCancel = () => {
+    if (abortController) {
+      console.log('🛑 CANCEL: User requested to cancel current AI response');
+      abortController.abort();
+      setAbortController(null);
+      setIsLoading(false);
+    }
+  };
   const [streamingMessage, setStreamingMessage] = useState('');
   const [isModelModalOpen, setIsModelModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -164,6 +174,10 @@ export function ChatInput() {  const {
     setIsLoading(true);
     setAttachments([]);
     
+    // Create abort controller for cancellation
+    const controller = new AbortController();
+    setAbortController(controller);
+    
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -218,6 +232,7 @@ export function ChatInput() {  const {
           attachments: messageAttachments,
           isGuest: true,
         }),
+        signal: controller.signal, // Add abort signal
       });
 
       if (response.ok && response.body) {
@@ -325,9 +340,18 @@ export function ChatInput() {  const {
       }
     } catch (error) {
       console.error('Error in guest submit:', error);
+      
+      // Check if request was aborted by user
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🛑 GUEST_CHAT: Request was cancelled by user');
+        // For guest users, we can just finish silently since messages are handled client-side
+        return;
+      }
+      
       alert('Error sending message. Please try again.');
     } finally {
       setIsLoading(false);
+      setAbortController(null); // Clean up abort controller
     }
   };
 
@@ -345,6 +369,10 @@ export function ChatInput() {  const {
     setMessage('');
     setIsLoading(true);
     setStreamingMessage('');
+    
+    // Create abort controller for cancellation
+    const controller = new AbortController();
+    setAbortController(controller);
     
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -426,6 +454,7 @@ export function ChatInput() {  const {
           conversationId: conversationId,
           attachments: messageAttachments,
         }),
+        signal: controller.signal, // Add abort signal
       });
 
       if (!response.ok) {
@@ -487,6 +516,36 @@ export function ChatInput() {  const {
     } catch (error) {
       console.error('Error sending message:', error);
       
+      // Check if request was aborted by user
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🛑 CHAT_INPUT: Request was cancelled by user');
+        if (assistantMessageId) {
+          // Finalize the message with whatever content was received so far
+          const currentContent = streamingMessage || '';
+          console.log(`🛑 CHAT_INPUT: Finalizing cancelled message with content: "${currentContent}"`);
+          finalizeMessage(assistantMessageId, currentContent + '\n\n*[Response interrupted by user]*');
+          
+          // Save the interrupted message to database
+          if (conversationId) {
+            try {
+              await fetch(`/api/conversations/${conversationId}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  role: 'assistant',
+                  content: currentContent + '\n\n*[Response interrupted by user]*',
+                }),
+              });
+            } catch (dbError) {
+              console.error('Failed to save interrupted message to database:', dbError);
+            }
+          }
+        } else if (userMessageId) {
+          removeOptimisticMessage(userMessageId);
+        }
+        return; // Don't show error alert for user cancellation
+      }
+      
       // Show error message in chat if we have an assistant message to update
       if (assistantMessageId) {
         let errorMessage = 'An unexpected error occurred';
@@ -531,6 +590,7 @@ export function ChatInput() {  const {
       setIsLoading(false);
       setStreamingMessage('');
       setAttachments([]);
+      setAbortController(null); // Clean up abort controller
       
       setTimeout(() => {
         if (textareaRef.current) {
@@ -546,6 +606,10 @@ export function ChatInput() {  const {
     setMessage('');
     setIsLoading(true);
     setAttachments([]);
+    
+    // Create abort controller for cancellation
+    const controller = new AbortController();
+    setAbortController(controller);
     
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -601,6 +665,7 @@ export function ChatInput() {  const {
           attachments: messageAttachments,
           isGuest: true,
         }),
+        signal: controller.signal, // Add abort signal
       });
 
       if (response.ok) {
@@ -671,9 +736,17 @@ export function ChatInput() {  const {
       }
     } catch (error) {
       console.error('Error in guest consensus submit:', error);
+      
+      // Check if request was aborted by user
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🛑 GUEST_CONSENSUS: Request was cancelled by user');
+        return; // Don't show error alert for user cancellation
+      }
+      
       alert('Error sending consensus message. Please try again.');
     } finally {
       setIsLoading(false);
+      setAbortController(null); // Clean up abort controller
     }
   };
 
@@ -690,6 +763,10 @@ export function ChatInput() {  const {
     const messageAttachments = [...attachments];
     setMessage('');
     setIsLoading(true);
+    
+    // Create abort controller for cancellation
+    const controller = new AbortController();
+    setAbortController(controller);
     
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -782,6 +859,7 @@ export function ChatInput() {  const {
           conversationId: conversationId,
           attachments: messageAttachments,
         }),
+        signal: controller.signal, // Add abort signal
       });
 
       if (!response.ok) {
@@ -935,6 +1013,18 @@ export function ChatInput() {  const {
       if (streamTimeout) clearTimeout(streamTimeout);
       if (warningTimeout) clearTimeout(warningTimeout);
       
+      // Check if request was aborted by user
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🛑 CONSENSUS: Request was cancelled by user');
+        if (assistantMessageId) {
+          // For consensus mode, we can finalize with partial responses
+          finalizeMessage(assistantMessageId, '*[Consensus interrupted by user]*');
+        } else if (userMessageId) {
+          removeOptimisticMessage(userMessageId);
+        }
+        return; // Don't show error alert for user cancellation
+      }
+      
       if (assistantMessageId) {
         let errorMessage = 'An unexpected error occurred';
         if (error instanceof Error) {
@@ -960,6 +1050,7 @@ export function ChatInput() {  const {
     } finally {
       setIsLoading(false);
       setAttachments([]);
+      setAbortController(null); // Clean up abort controller
       
       // Clean up timeouts if they exist
       if (streamTimeout) clearTimeout(streamTimeout);
@@ -1500,18 +1591,19 @@ export function ChatInput() {  const {
                 })()}
 
                 <button
-                  type="submit"
-                  disabled={(!message.trim() && attachments.length === 0) || isLoading || (isConsensusMode && selectedModels.length === 0)}
+                  type={isLoading ? "button" : "submit"}
+                  onClick={isLoading ? handleCancel : undefined}
+                  disabled={!isLoading && ((!message.trim() && attachments.length === 0) || (isConsensusMode && selectedModels.length === 0))}
                   className="relative group cursor-pointer p-2 rounded-lg hover:bg-white/10 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150"
                 >
                   {isLoading ? (
-                    <Loader2 size={18} className="text-blue-400 animate-spin" />
+                    <X size={18} className="text-red-400 hover:text-red-300" />
                   ) : (
                     <Send size={20} className="text-white/60 hover:text-white" />
                   )}
                   
                   <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-                    {isLoading ? 'Sending...' : 'Send'}
+                    {isLoading ? 'Cancel' : 'Send'}
                   </div>
                 </button>
               </div>
