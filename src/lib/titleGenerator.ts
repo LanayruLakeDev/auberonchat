@@ -11,26 +11,20 @@ export class TitleGenerator {
 
   async generateTitle(userMessage: string, assistantResponse?: string): Promise<string> {
     try {
-      console.log('[TitleGenerator] Starting title generation');
       const prompt = this.buildTitlePrompt(userMessage, assistantResponse);
       const aiService = createAIService(this.userApiKey);
-      
-      console.log(`[TitleGenerator] AI Service type: ${aiService.constructor.name}`);
-      console.log(`[TitleGenerator] User API Key provided: ${!!this.userApiKey}`);
       
       let title = '';
       if (aiService instanceof OpenRouterService) {
         // Use a fast model for title generation on OpenRouter
         const model = 'google/gemini-2.0-flash-lite-001';
-        console.log(`[TitleGenerator] Using OpenRouter model: ${model}`);
         title = await aiService.createChatCompletion(
           model,
           [{ role: 'user', content: prompt }]
         );
       } else if (aiService instanceof ChutesService) {
-        // Use a fast, free model for title generation on LLM7
-        const model = 'deepseek-v3-0324'; // Use LLM7 format model name
-        console.log(`[TitleGenerator] Using LLM7 model: ${model}`);
+        // Use a fast, free model for title generation on Chutes
+        const model = 'deepseek/deepseek-chat-v3-0324:free'; 
         title = await aiService.createChatCompletion({
           model,
           messages: [{ role: 'user', content: prompt }],
@@ -38,10 +32,7 @@ export class TitleGenerator {
         });
       }
       
-      console.log(`[TitleGenerator] Raw title received: "${title}"`);
-      
       if (!title) {
-        console.log('[TitleGenerator] No title generated, using fallback');
         throw new Error('No title generated');
       }
 
@@ -51,13 +42,10 @@ export class TitleGenerator {
         .substring(0, 60) // Max 60 characters
         .trim();
 
-      console.log(`[TitleGenerator] Final cleaned title: "${cleanTitle}"`);
       return cleanTitle || this.getFallbackTitle(userMessage);
     } catch (error) {
-      console.error('[TitleGenerator] Error generating title:', error);
-      const fallbackTitle = this.getFallbackTitle(userMessage);
-      console.log(`[TitleGenerator] Using fallback title: "${fallbackTitle}"`);
-      return fallbackTitle;
+      console.error('Error generating title:', error);
+      return this.getFallbackTitle(userMessage);
     }
   }
 

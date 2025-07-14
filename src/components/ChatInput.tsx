@@ -53,6 +53,7 @@ export function ChatInput() {  const {
       setIsLoading(false);
     }
   };
+
   const [streamingMessage, setStreamingMessage] = useState('');
   const [isModelModalOpen, setIsModelModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -763,6 +764,7 @@ export function ChatInput() {  const {
     const messageAttachments = [...attachments];
     setMessage('');
     setIsLoading(true);
+    setAttachments([]);
     
     // Create abort controller for cancellation
     const controller = new AbortController();
@@ -1190,64 +1192,10 @@ export function ChatInput() {  const {
         logo: getProviderLogo(normalizedProvider)
       };
     }
-    
-    // Handle LLM7 models without provider prefix
-    const modelLower = model.toLowerCase();
-    if (modelLower.startsWith('deepseek-')) {
-      return {
-        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        provider: 'DeepSeek',
-        providerKey: 'deepseek',
-        logo: getProviderLogo('deepseek')
-      };
-    } else if (modelLower.startsWith('grok-')) {
-      return {
-        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        provider: 'X.AI',
-        providerKey: 'grok',
-        logo: getProviderLogo('grok')
-      };
-    } else if (modelLower.startsWith('llama-')) {
-      return {
-        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        provider: 'Meta',
-        providerKey: 'llama',
-        logo: getProviderLogo('llama')
-      };
-    } else if (modelLower.startsWith('mistral-') || modelLower.startsWith('codestral-') || modelLower.startsWith('ministral-') || modelLower.startsWith('pixtral-') || modelLower.startsWith('open-mistral-') || modelLower.startsWith('open-mixtral-')) {
-      return {
-        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        provider: 'Mistral',
-        providerKey: 'mistral',
-        logo: getProviderLogo('mistral')
-      };
-    } else if (modelLower.startsWith('gpt-') || modelLower.startsWith('openai-')) {
-      return {
-        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        provider: 'OpenAI',
-        providerKey: 'openai',
-        logo: getProviderLogo('openai')
-      };
-    } else if (modelLower.startsWith('phi-')) {
-      return {
-        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        provider: 'Microsoft',
-        providerKey: 'phi',
-        logo: getProviderLogo('phi')
-      };
-    } else if (modelLower.startsWith('qwen')) {
-      return {
-        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        provider: 'Qwen',
-        providerKey: 'qwen',
-        logo: getProviderLogo('qwen')
-      };
-    }
-    
     return { 
       name: model, 
-      provider: 'Other', 
-      providerKey: 'other', 
+      provider: '', 
+      providerKey: '', 
       logo: null
     };
   };
@@ -1593,17 +1541,22 @@ export function ChatInput() {  const {
                 <button
                   type={isLoading ? "button" : "submit"}
                   onClick={isLoading ? handleCancel : undefined}
-                  disabled={!isLoading && ((!message.trim() && attachments.length === 0) || (isConsensusMode && selectedModels.length === 0))}
+                  disabled={(!message.trim() && attachments.length === 0) || (!isLoading && (isConsensusMode && selectedModels.length === 0))}
                   className="relative group cursor-pointer p-2 rounded-lg hover:bg-white/10 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150"
                 >
                   {isLoading ? (
-                    <X size={18} className="text-red-400 hover:text-red-300" />
+                    <div className="relative">
+                      {/* Default loading spinner */}
+                      <Loader2 size={18} className="text-blue-400 animate-spin group-hover:opacity-0 transition-opacity duration-200" />
+                      {/* Hover cancel X icon */}
+                      <X size={18} className="text-red-400 hover:text-red-300 absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                    </div>
                   ) : (
                     <Send size={20} className="text-white/60 hover:text-white" />
                   )}
                   
                   <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-                    {isLoading ? 'Cancel' : 'Send'}
+                    {isLoading ? 'Click to cancel' : 'Send'}
                   </div>
                 </button>
               </div>

@@ -76,24 +76,14 @@ export class ChutesService {
   }): Promise<string> {
     const mappedModel = MODEL_MAPPINGS[model] || model;
     console.log(`[ChutesService] Requesting completion for model: ${model} (mapped to: ${mappedModel}) via LLM7`);
-    console.log(`[ChutesService] Messages count: ${messages.length}`);
-    console.log(`[ChutesService] Messages:`, JSON.stringify(messages, null, 2));
-
-    // Sanitize messages for LLM7 - ensure only valid fields
-    const sanitizedMessages = messages.map(msg => ({
-      role: msg.role,
-      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
-    }));
 
     const requestBody = {
       model: mappedModel,
-      messages: sanitizedMessages,
+      messages,
       stream: true,
       max_tokens: 4000,
       temperature: 0.7,
     };
-
-    console.log(`[ChutesService] Request body:`, JSON.stringify(requestBody, null, 2));
 
     try {
       const response = await fetch(CHUTES_API_URL, {
@@ -111,8 +101,7 @@ export class ChutesService {
       if (!response.ok || !response.body) {
         const errorText = await response.text();
         console.error(`[ChutesService] API Error - Status: ${response.status}, Body: ${errorText}`);
-        console.error(`[ChutesService] Request that failed:`, JSON.stringify(requestBody, null, 2));
-        throw new Error(`Chutes AI API Error: ${errorText || `HTTP ${response.status}`}`);
+        throw new Error(`Chutes AI API Error: ${errorText}`);
       }
       
       // The response is OK, but it could still be a JSON error instead of a stream.
