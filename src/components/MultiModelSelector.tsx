@@ -88,7 +88,7 @@ export function MultiModelSelector({
     } else if (lowerModel.includes('llama')) {
       inferredProvider = 'Meta';
       inferredProviderKey = 'meta-llama';
-    } else if (lowerModel.includes('mistral') || lowerModel.includes('codestral') || lowerModel.includes('pixtral')) {
+    } else if (lowerModel.includes('mistral') || lowerModel.includes('codestral') || lowerModel.includes('pixtral') || lowerModel.includes('mixtral')) {
       inferredProvider = 'Mistral';
       inferredProviderKey = 'mistralai';
     } else if (lowerModel.includes('gpt') || lowerModel.includes('openai')) {
