@@ -72,11 +72,44 @@ export function MultiModelSelector({
         logo: getProviderLogo(normalizedProvider)
       };
     }
+    
+    // Handle models without provider prefix (likely Chutes models)
+    // Try to infer provider from model name
+    const lowerModel = model.toLowerCase();
+    let inferredProvider = '';
+    let inferredProviderKey = '';
+    
+    if (lowerModel.includes('deepseek')) {
+      inferredProvider = 'DeepSeek';
+      inferredProviderKey = 'deepseek';
+    } else if (lowerModel.includes('grok')) {
+      inferredProvider = 'X-AI';
+      inferredProviderKey = 'x-ai';
+    } else if (lowerModel.includes('llama')) {
+      inferredProvider = 'Meta';
+      inferredProviderKey = 'meta-llama';
+    } else if (lowerModel.includes('mistral') || lowerModel.includes('codestral') || lowerModel.includes('pixtral')) {
+      inferredProvider = 'Mistral';
+      inferredProviderKey = 'mistralai';
+    } else if (lowerModel.includes('gpt') || lowerModel.includes('openai')) {
+      inferredProvider = 'OpenAI';
+      inferredProviderKey = 'openai';
+    } else if (lowerModel.includes('phi')) {
+      inferredProvider = 'Microsoft';
+      inferredProviderKey = 'microsoft';
+    } else if (lowerModel.includes('qwen')) {
+      inferredProvider = 'Qwen';
+      inferredProviderKey = 'qwen';
+    } else {
+      inferredProvider = 'Other';
+      inferredProviderKey = 'other';
+    }
+    
     return { 
-      name: model, 
-      provider: '', 
-      providerKey: '', 
-      logo: null
+      name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      provider: inferredProvider,
+      providerKey: inferredProviderKey,
+      logo: getProviderLogo(inferredProviderKey)
     };
   };
 
