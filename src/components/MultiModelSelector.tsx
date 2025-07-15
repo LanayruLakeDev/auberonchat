@@ -56,6 +56,7 @@ export function MultiModelSelector({
   };
 
   const formatModelName = (model: string) => {
+    console.log('🔍 DEBUG: Processing model:', model);
     const parts = model.split('/');
     if (parts.length === 2) {
       const [provider, modelName] = parts;
@@ -65,6 +66,7 @@ export function MultiModelSelector({
         normalizedProvider = 'nousresearch';
       }
       
+      console.log('🔍 DEBUG: Standard format model:', model, '→', provider);
       return {
         name: modelName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
         provider: normalizedProvider === 'nousresearch' ? 'NousResearch' : provider.charAt(0).toUpperCase() + provider.slice(1),
@@ -75,7 +77,10 @@ export function MultiModelSelector({
     
     // Handle LLM7 models without provider prefix
     const modelLower = model.toLowerCase();
+    console.log('🔍 DEBUG: Chutes model check:', model, '→', modelLower);
+    
     if (modelLower.startsWith('deepseek-')) {
+      console.log('🔍 DEBUG: Matched DeepSeek:', model);
       return {
         name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
         provider: 'DeepSeek',
@@ -83,6 +88,7 @@ export function MultiModelSelector({
         logo: getProviderLogo('deepseek')
       };
     } else if (modelLower.startsWith('grok-')) {
+      console.log('🔍 DEBUG: Matched Grok:', model);
       return {
         name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
         provider: 'X.AI',
@@ -90,6 +96,7 @@ export function MultiModelSelector({
         logo: getProviderLogo('grok')
       };
     } else if (modelLower.startsWith('llama-')) {
+      console.log('🔍 DEBUG: Matched LLaMA:', model);
       return {
         name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
         provider: 'Meta',
@@ -97,6 +104,7 @@ export function MultiModelSelector({
         logo: getProviderLogo('llama')
       };
     } else if (modelLower.startsWith('mistral-') || modelLower.startsWith('codestral-') || modelLower.startsWith('ministral-') || modelLower.startsWith('pixtral-') || modelLower.startsWith('open-mistral-') || modelLower.startsWith('open-mixtral-')) {
+      console.log('🔍 DEBUG: Matched Mistral:', model);
       return {
         name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
         provider: 'Mistral',
@@ -104,6 +112,7 @@ export function MultiModelSelector({
         logo: getProviderLogo('mistral')
       };
     } else if (modelLower.startsWith('gpt-') || modelLower.startsWith('openai-')) {
+      console.log('🔍 DEBUG: Matched OpenAI:', model);
       return {
         name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
         provider: 'OpenAI',
@@ -111,6 +120,7 @@ export function MultiModelSelector({
         logo: getProviderLogo('openai')
       };
     } else if (modelLower.startsWith('phi-')) {
+      console.log('🔍 DEBUG: Matched Microsoft:', model);
       return {
         name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
         provider: 'Microsoft',
@@ -118,6 +128,7 @@ export function MultiModelSelector({
         logo: getProviderLogo('phi')
       };
     } else if (modelLower.startsWith('qwen')) {
+      console.log('🔍 DEBUG: Matched Qwen:', model);
       return {
         name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
         provider: 'Qwen',
@@ -126,6 +137,7 @@ export function MultiModelSelector({
       };
     }
 
+    console.log('🔍 DEBUG: No match, going to Other:', model);
     return {
       name: model,
       provider: 'Other',
