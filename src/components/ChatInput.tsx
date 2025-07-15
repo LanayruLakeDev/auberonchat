@@ -522,9 +522,8 @@ export function ChatInput() {  const {
         console.log('🛑 CHAT_INPUT: Request was cancelled by user');
         if (assistantMessageId) {
           // Finalize the message with whatever content was received so far
-          const currentContent = streamingMessage || '';
-          console.log(`🛑 CHAT_INPUT: Finalizing cancelled message with content: "${currentContent}"`);
-          finalizeMessage(assistantMessageId, currentContent + '\n\n*[Response interrupted by user]*');
+          console.log(`🛑 CHAT_INPUT: Finalizing cancelled message with content: "${assistantContent}"`);
+          finalizeMessage(assistantMessageId, assistantContent);
           
           // Save the interrupted message to database
           if (conversationId) {
@@ -534,7 +533,7 @@ export function ChatInput() {  const {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   role: 'assistant',
-                  content: currentContent + '\n\n*[Response interrupted by user]*',
+                  content: assistantContent,
                 }),
               });
             } catch (dbError) {
@@ -1019,8 +1018,15 @@ export function ChatInput() {  const {
       if (error instanceof Error && error.name === 'AbortError') {
         console.log('🛑 CONSENSUS: Request was cancelled by user');
         if (assistantMessageId) {
-          // For consensus mode, we can finalize with partial responses
-          finalizeMessage(assistantMessageId, '*[Consensus interrupted by user]*');
+          // For consensus mode, preserve any partial responses that were received
+          const hasAnyContent = consensusResponses.some(r => r.content && r.content.trim() !== '');
+          if (hasAnyContent) {
+            console.log('🛑 CONSENSUS: Finalizing with partial responses');
+            finalizeMessage(assistantMessageId, JSON.stringify(consensusResponses));
+          } else {
+            console.log('🛑 CONSENSUS: No content received, removing message');
+            removeOptimisticMessage(assistantMessageId);
+          }
         } else if (userMessageId) {
           removeOptimisticMessage(userMessageId);
         }
