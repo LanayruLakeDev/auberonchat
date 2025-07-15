@@ -73,43 +73,64 @@ export function MultiModelSelector({
       };
     }
     
-    // Handle models without provider prefix (likely Chutes models)
-    // Try to infer provider from model name
-    const lowerModel = model.toLowerCase();
-    let inferredProvider = '';
-    let inferredProviderKey = '';
-    
-    if (lowerModel.includes('deepseek')) {
-      inferredProvider = 'DeepSeek';
-      inferredProviderKey = 'deepseek';
-    } else if (lowerModel.includes('grok')) {
-      inferredProvider = 'X-AI';
-      inferredProviderKey = 'x-ai';
-    } else if (lowerModel.includes('llama')) {
-      inferredProvider = 'Meta';
-      inferredProviderKey = 'meta-llama';
-    } else if (lowerModel.includes('mistral') || lowerModel.includes('codestral') || lowerModel.includes('pixtral') || lowerModel.includes('mixtral')) {
-      inferredProvider = 'Mistral';
-      inferredProviderKey = 'mistralai';
-    } else if (lowerModel.includes('gpt') || lowerModel.includes('openai')) {
-      inferredProvider = 'OpenAI';
-      inferredProviderKey = 'openai';
-    } else if (lowerModel.includes('phi')) {
-      inferredProvider = 'Microsoft';
-      inferredProviderKey = 'microsoft';
-    } else if (lowerModel.includes('qwen')) {
-      inferredProvider = 'Qwen';
-      inferredProviderKey = 'qwen';
-    } else {
-      inferredProvider = 'Other';
-      inferredProviderKey = 'other';
+    // Handle LLM7 models without provider prefix
+    const modelLower = model.toLowerCase();
+    if (modelLower.startsWith('deepseek-')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
+        provider: 'DeepSeek',
+        providerKey: 'deepseek',
+        logo: getProviderLogo('deepseek')
+      };
+    } else if (modelLower.startsWith('grok-')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
+        provider: 'X.AI',
+        providerKey: 'grok',
+        logo: getProviderLogo('grok')
+      };
+    } else if (modelLower.startsWith('llama-')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
+        provider: 'Meta',
+        providerKey: 'llama',
+        logo: getProviderLogo('llama')
+      };
+    } else if (modelLower.startsWith('mistral-') || modelLower.startsWith('codestral-') || modelLower.startsWith('ministral-') || modelLower.startsWith('pixtral-') || modelLower.startsWith('open-mistral-') || modelLower.startsWith('open-mixtral-')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
+        provider: 'Mistral',
+        providerKey: 'mistral',
+        logo: getProviderLogo('mistral')
+      };
+    } else if (modelLower.startsWith('gpt-') || modelLower.startsWith('openai-')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
+        provider: 'OpenAI',
+        providerKey: 'openai',
+        logo: getProviderLogo('openai')
+      };
+    } else if (modelLower.startsWith('phi-')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
+        provider: 'Microsoft',
+        providerKey: 'phi',
+        logo: getProviderLogo('phi')
+      };
+    } else if (modelLower.startsWith('qwen')) {
+      return {
+        name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),   
+        provider: 'Qwen',
+        providerKey: 'qwen',
+        logo: getProviderLogo('qwen')
+      };
     }
-    
-    return { 
-      name: model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      provider: inferredProvider,
-      providerKey: inferredProviderKey,
-      logo: getProviderLogo(inferredProviderKey)
+
+    return {
+      name: model,
+      provider: 'Other',
+      providerKey: 'other',
+      logo: null
     };
   };
 
