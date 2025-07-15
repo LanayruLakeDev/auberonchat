@@ -38,32 +38,6 @@ const getProviderLogo = (model: string) => {
   const provider = model.split('/')[0];
   return providerLogos[provider.toLowerCase()] || null;
 };
-import { MarkdownRenderer } from './MarkdownRenderer';
-import { LoadingIndicator } from './LoadingIndicator';
-import { TypeWriter } from './TypeWriter';
-import { ConsensusMessage } from './ConsensusMessage';
-import { LordIcon } from './LordIcon';
-import { ScrollToBottomButton } from './ScrollToBottomButton';
-import { ConsensusResponse } from '@/types/chat';
-
-const getProviderLogo = (provider: string) => {
-  const providerLogos: Record<string, string> = {
-    'openai': '/logos/openai.svg',
-    'anthropic': '/logos/anthropic.svg',
-    'google': '/logos/google.svg',
-    'meta-llama': '/logos/meta.svg',
-    'mistralai': '/logos/mistral.svg',
-    'deepseek': '/logos/deepseek.svg',
-    'x-ai': '/logos/x-ai.svg',
-    'qwen': '/logos/qwen.svg',
-    'nousresearch': '/logos/nousresearch.svg',
-    'tngtech': '/logos/tngtech.svg',
-    'sophosympatheia': '/logos/sophosympatheia.svg',
-  };
-  
-  const provider = model.split('/')[0];
-  return providerLogos[provider.toLowerCase()] || null;
-};
 
 const formatModelName = (model: string) => {
   const parts = model.split('/');

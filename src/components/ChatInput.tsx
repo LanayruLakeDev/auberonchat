@@ -46,11 +46,13 @@ export function ChatInput() {  const {
   const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   const handleCancel = () => {
+    console.log('🛑 CANCEL: User clicked cancel button, abortController exists:', !!abortController);
+    
     if (abortController) {
-      console.log('🛑 CANCEL: User requested to cancel current AI response');
       abortController.abort();
       setAbortController(null);
       setIsLoading(false);
+      console.log('🛑 CANCEL: Request aborted successfully');
     }
   };
 
@@ -382,6 +384,7 @@ export function ChatInput() {  const {
     let conversationId: string | null = null;
     let userMessageId: string | undefined;
     let assistantMessageId: string | undefined;
+    let assistantContent = ''; // Moved outside try block for abort handling
     
     try {
       if (activeConversation) {
@@ -472,7 +475,7 @@ export function ChatInput() {  const {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let assistantContent = '';
+      assistantContent = ''; // Reset content for this request
 
       while (true) {
         const { done, value } = await reader.read();
@@ -519,10 +522,9 @@ export function ChatInput() {  const {
       
       // Check if request was aborted by user
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('🛑 CHAT_INPUT: Request was cancelled by user');
+        console.log('🛑 CHAT_INPUT: Request cancelled, content length:', assistantContent.length);
+        
         if (assistantMessageId) {
-          // Finalize the message with whatever content was received so far
-          console.log(`🛑 CHAT_INPUT: Finalizing cancelled message with content: "${assistantContent}"`);
           finalizeMessage(assistantMessageId, assistantContent);
           
           // Save the interrupted message to database
@@ -536,13 +538,15 @@ export function ChatInput() {  const {
                   content: assistantContent,
                 }),
               });
+              console.log('🛑 CHAT_INPUT: Interrupted message saved to database');
             } catch (dbError) {
-              console.error('Failed to save interrupted message to database:', dbError);
+              console.error('🛑 CHAT_INPUT: Failed to save interrupted message:', dbError);
             }
           }
         } else if (userMessageId) {
           removeOptimisticMessage(userMessageId);
         }
+        
         return; // Don't show error alert for user cancellation
       }
       
@@ -590,7 +594,7 @@ export function ChatInput() {  const {
       setIsLoading(false);
       setStreamingMessage('');
       setAttachments([]);
-      setAbortController(null); // Clean up abort controller
+      setAbortController(null);
       
       setTimeout(() => {
         if (textareaRef.current) {
@@ -778,6 +782,12 @@ export function ChatInput() {  const {
     let assistantMessageId: string | undefined;
     let streamTimeout: NodeJS.Timeout | undefined;
     let warningTimeout: NodeJS.Timeout | undefined;
+    let consensusResponses: ConsensusResponse[] = selectedModels.map(model => ({
+      model,
+      content: '',
+      isLoading: true,
+      responseTime: 0,
+    }));
     
     try {
       if (activeConversation) {
@@ -877,7 +887,8 @@ export function ChatInput() {  const {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let consensusResponses: ConsensusResponse[] = selectedModels.map(model => ({
+      // Reset consensus responses for this request
+      consensusResponses = selectedModels.map(model => ({
         model,
         content: '',
         isLoading: true,
@@ -1016,12 +1027,13 @@ export function ChatInput() {  const {
       
       // Check if request was aborted by user
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('🛑 CONSENSUS: Request was cancelled by user');
+        console.log('🛑 CONSENSUS: Request cancelled by user');
+        
         if (assistantMessageId) {
-          // For consensus mode, preserve any partial responses that were received
           const hasAnyContent = consensusResponses.some(r => r.content && r.content.trim() !== '');
+          
           if (hasAnyContent) {
-            console.log('🛑 CONSENSUS: Finalizing with partial responses');
+            console.log('🛑 CONSENSUS: Saving partial responses');
             finalizeMessage(assistantMessageId, JSON.stringify(consensusResponses));
           } else {
             console.log('🛑 CONSENSUS: No content received, removing message');
@@ -1030,6 +1042,7 @@ export function ChatInput() {  const {
         } else if (userMessageId) {
           removeOptimisticMessage(userMessageId);
         }
+        
         return; // Don't show error alert for user cancellation
       }
       
@@ -1058,7 +1071,7 @@ export function ChatInput() {  const {
     } finally {
       setIsLoading(false);
       setAttachments([]);
-      setAbortController(null); // Clean up abort controller
+      setAbortController(null);
       
       // Clean up timeouts if they exist
       if (streamTimeout) clearTimeout(streamTimeout);
